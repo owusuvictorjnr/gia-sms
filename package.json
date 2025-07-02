@@ -1,0 +1,16 @@
+{
+  "name": "gia-monorepo",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace=api & npm run dev --workspace=web",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
+  },
+  "devDependencies": {
+    "prettier": "^3.1.0"
+  }
+}
