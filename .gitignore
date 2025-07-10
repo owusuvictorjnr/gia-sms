@@ -1,5 +1,9 @@
-node_modules
+# Environment variables
+.env
 
-.next
+# Node dependencies
+node_modules/
 
-dist
+# Build folders
+dist/
+.next/
