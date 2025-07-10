@@ -1,15 +1,22 @@
-import { Controller, Request, Post, UseGuards } from "@nestjs/common";
+import { Controller, Request, Post, UseGuards, Get } from "@nestjs/common";
 import { LocalAuthGuard } from "./local-auth.guard";
 import { AuthService } from "./auth.service";
+import { JwtAuthGuard } from "./jwt-auth.guard";
 
-@Controller("auth") // All routes will start with /auth
+@Controller("auth")
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @UseGuards(LocalAuthGuard) // Protect this route with our LocalStrategy
+  @UseGuards(LocalAuthGuard)
   @Post("login")
   async login(@Request() req) {
-    // If the LocalAuthGuard succeeds, the user object is attached to the request
     return this.authService.login(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard) // Protect this route with the JWT guard
+  @Get("profile")
+  getProfile(@Request() req) {
+    // The JwtStrategy attaches the user payload to the request object
+    return req.user;
   }
 }
