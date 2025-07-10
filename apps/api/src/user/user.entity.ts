@@ -30,7 +30,7 @@ export class User {
   @Column()
   firstName: string;
 
-  @Column()
+  @Column({ nullable: true }) // Middle name is optional, so it can be null.
   middleName: string;
 
   @Column()
