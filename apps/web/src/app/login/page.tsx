@@ -1,32 +1,45 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
-    // In the next step, we will replace this with a real API call.
-    console.log("Logging in with:", { email, password });
+    try {
+      const response = await fetch("http://localhost:3001/auth/login", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-    // Simulate API call delay
-    setTimeout(() => {
-      // Mock success/error for demonstration
-      if (email === "admin@educonnect.com" && password === "password123") {
-        console.log("Login successful!");
-        // We will handle routing to the dashboard later.
-      } else {
-        setError("Invalid email or password. Please try again.");
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Failed to login");
       }
+
+      // Store the token in the browser's localStorage
+      localStorage.setItem("access_token", data.access_token);
+
+      // Redirect to the dashboard
+      router.push("/dashboard");
+    } catch (err: any) {
+      setError(err.message || "An unexpected error occurred.");
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
