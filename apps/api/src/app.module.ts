@@ -6,6 +6,8 @@ import { UserModule } from './user/user.module';
 import { User } from './user/user.entity';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
+import { Grade } from './grade/grade.entity';
+import { GradeModule } from './grade/grade.module';
 
 @Module({
   imports: [
@@ -23,14 +25,16 @@ import { AuthModule } from './auth/auth.module';
         username: configService.get<string>('DB_USERNAME'),
         password: configService.get<string>('DB_PASSWORD'),
         database: configService.get<string>('DB_DATABASE'),
-        entities: [User],
+        entities: [User, Grade],
         synchronize: true,
       }),
     }),
     UserModule,
     AuthModule, // We've imported the AuthModule here
+    GradeModule, // We've imported the GradeModule here
   ],
   controllers: [AppController],
   providers: [AppService],
+
 })
 export class AppModule {}
