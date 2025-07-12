@@ -1,9 +1,10 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { User } from "./user.entity";
+import { User, UserRole } from "./user.entity";
 import * as bcrypt from "bcrypt";
 
+// The UserService is responsible for managing users in the application.
 @Injectable()
 export class UserService {
   constructor(
@@ -28,5 +29,11 @@ export class UserService {
     return this.usersRepository.findOne({ where: { email } });
   }
 
-  // We will add more methods here later (e.g., findById)
+  // New method to find all students
+  async findAllStudents(): Promise<User[]> {
+    return this.usersRepository.find({
+      where: { role: UserRole.STUDENT },
+      order: { lastName: "ASC", firstName: "ASC" }, // Order them alphabetically
+    });
+  }
 }
