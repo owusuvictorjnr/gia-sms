@@ -1,89 +1,163 @@
-import { useState } from "react";
+import { useState, useEffect, FormEvent } from "react";
 
-// In a real app, these types would come from your shared-types package
+// Define the shapes of our data, matching the backend entities
 interface Student {
-  id: number;
-  name: string;
+  id: string;
+  firstName: string;
+  middleName?: string; // middleName is now an optional property
+  lastName: string;
 }
 
 interface GradeEntry {
-  id: number;
-  studentName: string;
+  id: string;
   assessment: string;
   score: string;
+  subject: string;
   date: string;
+  student?: Student; // Student might not be included in all responses
 }
 
+// Helper function to get the auth token
+const getAuthToken = (): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("access_token");
+  }
+  return null;
+};
+
 export default function GradebookPage() {
-  // Mock data - this would be fetched from your API
-  const students: Student[] = [
-    { id: 1, name: "Kofi Mensah" },
-    { id: 2, name: "Adwoa Akoto" },
-    { id: 3, name: "Yaw Boateng" },
-  ];
+  const [students, setStudents] = useState<Student[]>([]);
+  const [recentGrades, setRecentGrades] = useState<GradeEntry[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [recentGrades, setRecentGrades] = useState<GradeEntry[]>([
-    {
-      id: 1,
-      studentName: "Kofi Mensah",
-      assessment: "Math Test 1",
-      score: "85%",
-      date: "July 8, 2025",
-    },
-    {
-      id: 2,
-      studentName: "Adwoa Akoto",
-      assessment: "Math Test 1",
-      score: "92%",
-      date: "July 8, 2025",
-    },
-    {
-      id: 3,
-      studentName: "Yaw Boateng",
-      assessment: "English Essay",
-      score: "A-",
-      date: "July 5, 2025",
-    },
-  ]);
-
-  const [selectedStudent, setSelectedStudent] = useState<string>(
-    students[0].id.toString()
-  );
+  // Form state
+  const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [assessment, setAssessment] = useState("");
+  const [subject, setSubject] = useState("");
   const [score, setScore] = useState("");
 
-  const handleSubmitGrade = (e: React.FormEvent) => {
+  // Fetch initial data (students and grades for the first student)
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        setError("Authentication error. Please log in again.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch the list of all students
+        const studentsResponse = await fetch(
+          "http://localhost:3001/users/students",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!studentsResponse.ok) throw new Error("Failed to fetch students.");
+
+        const studentsData: Student[] = await studentsResponse.json();
+        setStudents(studentsData);
+
+        // If there are students, select the first one and fetch their grades
+        if (studentsData.length > 0) {
+          const firstStudentId = studentsData[0].id;
+          setSelectedStudent(firstStudentId);
+          fetchGradesForStudent(firstStudentId, token);
+        }
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []); // Empty dependency array means this runs once on mount
+
+  // Function to fetch grades for a specific student
+  const fetchGradesForStudent = async (studentId: string, token: string) => {
+    try {
+      const gradesResponse = await fetch(
+        `http://localhost:3001/grades/student/${studentId}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      if (!gradesResponse.ok) throw new Error("Failed to fetch grades.");
+
+      const gradesData: GradeEntry[] = await gradesResponse.json();
+      setRecentGrades(gradesData);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  // Handle student selection change
+  useEffect(() => {
+    const token = getAuthToken();
+    if (selectedStudent && token) {
+      fetchGradesForStudent(selectedStudent, token);
+    }
+  }, [selectedStudent]);
+
+  const handleSubmitGrade = async (e: FormEvent) => {
     e.preventDefault();
-    if (!selectedStudent || !assessment || !score) {
+    const token = getAuthToken();
+    if (!selectedStudent || !assessment || !subject || !score || !token) {
       alert("Please fill out all fields.");
       return;
     }
 
-    // In a real app, you would send this data to your backend API
-    const newGrade: GradeEntry = {
-      id: recentGrades.length + 1,
-      studentName:
-        students.find((s) => s.id.toString() === selectedStudent)?.name ||
-        "Unknown",
-      assessment,
-      score,
-      date: new Date().toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      }),
-    };
+    try {
+      const response = await fetch("http://localhost:3001/grades", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          studentId: selectedStudent,
+          assessment,
+          subject,
+          score,
+        }),
+      });
 
-    setRecentGrades([newGrade, ...recentGrades]);
+      if (!response.ok) {
+        throw new Error("Failed to save grade.");
+      }
 
-    // Reset form
-    setAssessment("");
-    setScore("");
+      // Refresh the grades list to show the new entry
+      fetchGradesForStudent(selectedStudent, token);
+
+      // Reset form
+      setAssessment("");
+      setSubject("");
+      setScore("");
+    } catch (err: any) {
+      setError(err.message);
+    }
   };
+
+  const getStudentFullName = (student: Student | undefined) => {
+    if (!student) return "";
+    return [student.firstName, student.middleName, student.lastName]
+      .filter(Boolean)
+      .join(" ");
+  };
+
+  if (isLoading) {
+    return <div>Loading Gradebook...</div>;
+  }
+
+  if (error) {
+    return <div className="text-red-500">Error: {error}</div>;
+  }
 
   return (
     <div className="space-y-6">
-      {/* Grade Entry Form */}
       <div className="rounded-lg bg-white p-6 shadow">
         <h2 className="mb-4 border-b pb-4 text-2xl font-bold text-gray-800">
           Enter New Grade
@@ -107,10 +181,26 @@ export default function GradebookPage() {
             >
               {students.map((student) => (
                 <option key={student.id} value={student.id}>
-                  {student.name}
+                  {getStudentFullName(student)}
                 </option>
               ))}
             </select>
+          </div>
+          <div>
+            <label
+              htmlFor="subject"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Subject
+            </label>
+            <input
+              type="text"
+              id="subject"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="e.g., Science"
+              className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+            />
           </div>
           <div>
             <label
@@ -124,7 +214,7 @@ export default function GradebookPage() {
               id="assessment"
               value={assessment}
               onChange={(e) => setAssessment(e.target.value)}
-              placeholder="e.g., Science Quiz 2"
+              placeholder="e.g., Quiz 2"
               className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
             />
           </div>
@@ -155,30 +245,40 @@ export default function GradebookPage() {
         </form>
       </div>
 
-      {/* Recent Grades Table */}
       <div className="rounded-lg bg-white p-6 shadow">
         <h2 className="mb-4 border-b pb-4 text-2xl font-bold text-gray-800">
-          Recently Entered Grades
+          Grades for{" "}
+          {getStudentFullName(students.find((s) => s.id === selectedStudent))}
         </h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-left text-sm">
             <thead className="bg-gray-50">
               <tr>
-                <th className="p-4 font-semibold">Student</th>
+                <th className="p-4 font-semibold">Subject</th>
                 <th className="p-4 font-semibold">Assessment</th>
                 <th className="p-4 font-semibold">Score</th>
                 <th className="p-4 font-semibold">Date</th>
               </tr>
             </thead>
             <tbody>
-              {recentGrades.map((grade) => (
-                <tr key={grade.id} className="border-b hover:bg-gray-50">
-                  <td className="p-4">{grade.studentName}</td>
-                  <td className="p-4">{grade.assessment}</td>
-                  <td className="p-4 font-medium">{grade.score}</td>
-                  <td className="p-4 text-gray-500">{grade.date}</td>
+              {recentGrades.length > 0 ? (
+                recentGrades.map((grade) => (
+                  <tr key={grade.id} className="border-b hover:bg-gray-50">
+                    <td className="p-4">{grade.subject}</td>
+                    <td className="p-4">{grade.assessment}</td>
+                    <td className="p-4 font-medium">{grade.score}</td>
+                    <td className="p-4 text-gray-500">
+                      {new Date(grade.date).toLocaleDateString()}
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={4} className="p-4 text-center text-gray-500">
+                    No grades entered for this student yet.
+                  </td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>
