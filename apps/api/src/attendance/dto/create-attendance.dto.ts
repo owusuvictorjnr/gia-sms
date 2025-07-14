@@ -7,12 +7,8 @@ import {
   ValidateNested,
 } from "class-validator";
 import { Type } from "class-transformer";
-import { AttendanceStatus } from "../attendance.entity";
+import { AttendanceStatus } from "shared-types/src/attendance-status.enum";
 
-/**
- * CreateAttendanceDto is used to validate the input data when creating or updating attendance records.
- * It ensures that the date is provided and that each student's record includes a valid student ID and status.
- */
 // DTO for a single student's attendance record
 class StudentAttendanceDto {
   @IsUUID()
@@ -35,4 +31,3 @@ export class CreateAttendanceDto {
   @Type(() => StudentAttendanceDto)
   records: StudentAttendanceDto[];
 }
- 
