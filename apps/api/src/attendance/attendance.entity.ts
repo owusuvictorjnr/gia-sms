@@ -6,16 +6,9 @@ import {
   Unique,
 } from "typeorm";
 import { User } from "../user/user.entity";
-
-export enum AttendanceStatus {
-  PRESENT = "present",
-  ABSENT = "absent",
-  LATE = "late",
-}
-
+import { AttendanceStatus } from "shared-types/src/attendance-status.enum"; // Import from shared package
 
 @Entity("attendance")
-// This ensures that there can only be one attendance record per student per day.
 @Unique(["studentId", "date"])
 export class Attendance {
   @PrimaryGeneratedColumn("uuid")
@@ -27,13 +20,11 @@ export class Attendance {
   })
   status: AttendanceStatus;
 
-  @Column({ type: "date" }) // Stores only the date, without time.
-  date: string; // e.g., "2025-07-11"
+  @Column({ type: "date" })
+  date: string;
 
   @Column({ nullable: true })
-  remarks?: string; // Optional notes from the teacher
-
-  // --- Relationships ---
+  remarks?: string;
 
   @ManyToOne(() => User)
   student: User;
@@ -42,7 +33,7 @@ export class Attendance {
   studentId: string;
 
   @ManyToOne(() => User)
-  teacher: User; // The teacher who took the attendance
+  teacher: User;
 
   @Column()
   teacherId: string;
