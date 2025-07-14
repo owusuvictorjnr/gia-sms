@@ -1,6 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm";
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  ManyToMany,
+  JoinTable,
+} from "typeorm";
 
-// This enum defines the possible roles a user can have.
 export enum UserRole {
   ADMIN = "admin",
   TEACHER = "teacher",
@@ -9,30 +14,47 @@ export enum UserRole {
   STUDENT = "student",
 }
 
-@Entity("users") // This decorator marks the class as a database table named 'users'.
+@Entity("users")
 export class User {
-  @PrimaryGeneratedColumn("uuid") // Creates a primary key column that auto-generates a unique ID.
+  @PrimaryGeneratedColumn("uuid")
   id: string;
 
-  @Column({ unique: true }) // Creates a column for the email, which must be unique.
+  @Column({ unique: true })
   email: string;
 
-  @Column() // Creates a column for the hashed password.
+  @Column()
   password: string;
 
   @Column({
     type: "enum",
     enum: UserRole,
-    default: UserRole.PARENT, // Sets the default role for new users to 'parent'.
+    default: UserRole.PARENT,
   })
   role: UserRole;
 
   @Column()
   firstName: string;
 
-  @Column({ nullable: true }) // Middle name is optional, so it can be null.
-  middleName: string;
+  @Column({ nullable: true })
+  middleName?: string;
 
   @Column()
   lastName: string;
+
+  // --- Relationships ---
+
+  // For a parent, this will list their children.
+  // For a student, this will be empty.
+  @ManyToMany(() => User, (user) => user.parents)
+  @JoinTable({
+    name: "parent_child", // The name of the intermediate table
+    joinColumn: { name: "parentId", referencedColumnName: "id" },
+    inverseJoinColumn: { name: "childId", referencedColumnName: "id" },
+  })
+  children: User[];
+
+  // For a student, this will list their parents.
+  // For a parent, this will be empty.
+  @ManyToMany(() => User, (user) => user.children)
+  parents: User[];
 }
