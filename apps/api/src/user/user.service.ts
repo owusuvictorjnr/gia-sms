@@ -2,9 +2,10 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { User, UserRole } from "./user.entity";
-import * as bcrypt from "bcrypt";
+import * as bcrypt from "bcryptjs"; // Changed from 'bcrypt' to 'bcryptjs'
 
-// The UserService is responsible for managing users in the application.
+
+// The UserService is responsible for managing user-related functionality, such as creating users and finding them by email.
 @Injectable()
 export class UserService {
   constructor(
