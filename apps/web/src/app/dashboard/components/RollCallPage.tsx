@@ -1,25 +1,95 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AttendanceStatus } from "shared-types/src/attendance-status.enum"; // Import from shared package
 
-// In a real app, this would be a more complex type from your shared-types package
+
+// RollCallPage component for managing student attendance
+// Define the shapes of our data
 interface Student {
-  id: number;
-  name: string;
-  status: "present" | "absent" | "late" | "unmarked";
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
 }
 
+interface StudentAttendanceState extends Student {
+  status: AttendanceStatus | "unmarked";
+}
+
+// Helper function to get the auth token
+const getAuthToken = (): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("access_token");
+  }
+  return null;
+};
+
+// Helper function to get today's date in YYYY-MM-DD format
+const getTodayDateString = () => {
+  const today = new Date();
+  return today.toISOString().split("T")[0];
+};
+
 export default function RollCallPage() {
-  // Mock data - in a real app, this would be fetched from your API
-  const [students, setStudents] = useState<Student[]>([
-    { id: 1, name: "Kofi Mensah", status: "unmarked" },
-    { id: 2, name: "Adwoa Akoto", status: "unmarked" },
-    { id: 3, name: "Yaw Boateng", status: "unmarked" },
-    { id: 4, name: "Esi Osei", status: "unmarked" },
-    { id: 5, name: "Kwame Annan", status: "unmarked" },
-  ]);
+  const [students, setStudents] = useState<StudentAttendanceState[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+  const todayDate = getTodayDateString();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        setError("Authentication error. Please log in again.");
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        // Fetch students and today's attendance records simultaneously
+        const [studentsRes, attendanceRes] = await Promise.all([
+          fetch("http://localhost:3001/users/students", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch(`http://localhost:3001/attendance/${todayDate}`, {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (!studentsRes.ok) throw new Error("Failed to fetch students.");
+        if (!attendanceRes.ok)
+          throw new Error("Failed to fetch attendance records.");
+
+        const studentsData: Student[] = await studentsRes.json();
+        const attendanceData: {
+          studentId: string;
+          status: AttendanceStatus;
+        }[] = await attendanceRes.json();
+
+        const attendanceMap = new Map(
+          attendanceData.map((att) => [att.studentId, att.status])
+        );
+
+        const studentListWithStatus = studentsData.map((student) => ({
+          ...student,
+          // FIX: Explicitly cast the status to the correct type
+          status: (attendanceMap.get(student.id) ||
+            "unmarked") as StudentAttendanceState["status"],
+        }));
+
+        setStudents(studentListWithStatus);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [todayDate]);
 
   const handleStatusChange = (
-    studentId: number,
-    newStatus: Student["status"]
+    studentId: string,
+    newStatus: AttendanceStatus
   ) => {
     setStudents(
       students.map((student) =>
@@ -28,9 +98,40 @@ export default function RollCallPage() {
     );
   };
 
+  const handleSubmit = async () => {
+    const token = getAuthToken();
+    const recordsToSubmit = students
+      .filter((s) => s.status !== "unmarked")
+      .map((s) => ({ studentId: s.id, status: s.status as AttendanceStatus }));
+
+    if (recordsToSubmit.length === 0) {
+      alert("Please mark attendance for at least one student.");
+      return;
+    }
+
+    try {
+      const response = await fetch("http://localhost:3001/attendance", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ date: todayDate, records: recordsToSubmit }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to submit attendance.");
+      }
+
+      alert("Attendance submitted successfully!");
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
   const getStatusButtonClass = (
-    studentStatus: Student["status"],
-    buttonStatus: Student["status"]
+    studentStatus: StudentAttendanceState["status"],
+    buttonStatus: AttendanceStatus
   ) => {
     if (studentStatus === buttonStatus) {
       switch (buttonStatus) {
@@ -45,6 +146,9 @@ export default function RollCallPage() {
     return "bg-gray-200 text-gray-700 hover:bg-gray-300";
   };
 
+  if (isLoading) return <div>Loading Roll Call...</div>;
+  if (error) return <div className="text-red-500">Error: {error}</div>;
+
   return (
     <div className="rounded-lg bg-white p-6 shadow">
       <div className="mb-6 border-b pb-4">
@@ -52,7 +156,15 @@ export default function RollCallPage() {
           Roll Call - Grade 5
         </h2>
         <p className="mt-1 text-gray-600">
-          Date: <span className="font-semibold">July 10, 2025</span>
+          Date:{" "}
+          <span className="font-semibold">
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "long",
+              year: "numeric",
+              month: "long",
+              day: "numeric",
+            })}
+          </span>
         </p>
       </div>
 
@@ -62,23 +174,33 @@ export default function RollCallPage() {
             key={student.id}
             className="flex flex-col items-center justify-between rounded-lg border p-4 sm:flex-row"
           >
-            <p className="mb-3 font-medium sm:mb-0">{student.name}</p>
+            <p className="mb-3 font-medium sm:mb-0">
+              {[student.firstName, student.middleName, student.lastName]
+                .filter(Boolean)
+                .join(" ")}
+            </p>
             <div className="flex space-x-2">
               <button
-                onClick={() => handleStatusChange(student.id, "present")}
-                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, "present")}`}
+                onClick={() =>
+                  handleStatusChange(student.id, AttendanceStatus.PRESENT)
+                }
+                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, AttendanceStatus.PRESENT)}`}
               >
                 Present
               </button>
               <button
-                onClick={() => handleStatusChange(student.id, "absent")}
-                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, "absent")}`}
+                onClick={() =>
+                  handleStatusChange(student.id, AttendanceStatus.ABSENT)
+                }
+                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, AttendanceStatus.ABSENT)}`}
               >
                 Absent
               </button>
               <button
-                onClick={() => handleStatusChange(student.id, "late")}
-                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, "late")}`}
+                onClick={() =>
+                  handleStatusChange(student.id, AttendanceStatus.LATE)
+                }
+                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, AttendanceStatus.LATE)}`}
               >
                 Late
               </button>
@@ -88,7 +210,10 @@ export default function RollCallPage() {
       </div>
 
       <div className="mt-8 border-t pt-6">
-        <button className="w-full rounded-md bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 sm:w-auto sm:px-8">
+        <button
+          onClick={handleSubmit}
+          className="w-full rounded-md bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 sm:w-auto sm:px-8"
+        >
           Submit Attendance
         </button>
       </div>
