@@ -1,55 +1,120 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { AnnouncementStatus } from "shared-types/src/announcement-status.enum";
 
-// In a real app, this would be a more complex type
+// Define the shape of the data from the API
 interface ApprovalItem {
-  id: number;
-  type: "Announcement" | "Gallery";
-  submittedBy: string;
+  id: string;
+  type: "Announcement" | "Gallery"; // For now, we only handle Announcements
   title: string;
   content: string;
-  status: "pending" | "approved" | "rejected";
+  status: AnnouncementStatus;
+  author: {
+    firstName: string;
+    middleName?: string; // Optional, in case the author has no middle name
+    lastName: string;
+  };
 }
 
-export default function ApprovalsPage() {
-  // Mock data - this would be fetched from your API
-  const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([
-    {
-      id: 1,
-      type: "Announcement",
-      submittedBy: "Mr. David Annan",
-      title: "Field Trip Reminder",
-      content:
-        "Dear Parents, a quick reminder about the upcoming field trip to the Kakum National Park on July 15th. Please ensure your child brings a packed lunch...",
-      status: "pending",
-    },
-    {
-      id: 2,
-      type: "Announcement",
-      submittedBy: "Mrs. Jane Doe",
-      title: "Homework Update",
-      content:
-        "Please note that the math homework scheduled for this Friday has been postponed to next Monday to give students more time to prepare.",
-      status: "pending",
-    },
-    {
-      id: 3,
-      type: "Gallery",
-      submittedBy: "Mr. David Annan",
-      title: "Sports Day Photos",
-      content:
-        "5 new photos have been uploaded from our annual Sports Day event.",
-      status: "pending",
-    },
-  ]);
+// Helper function to get the auth token
+const getAuthToken = (): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("access_token");
+  }
+  return null;
+};
 
-  const handleDecision = (
-    itemId: number,
+
+// Main component for the Approvals page
+// This component fetches pending announcements and allows admins to approve or reject them
+// It displays a list of announcements with options to approve or reject each one
+// The component handles loading states and error messages
+// It uses the shared AnnouncementStatus enum for consistency with the backend
+// The approval items are displayed in a card-like format with action buttons
+// After an action is taken, the item is removed from the list
+// If there are no pending items, a message is displayed indicating that everything is up to date
+export default function ApprovalsPage() {
+  const [approvalItems, setApprovalItems] = useState<ApprovalItem[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchPendingAnnouncements = async () => {
+    const token = getAuthToken();
+    if (!token) {
+      setError("Authentication error. Please log in again.");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:3001/announcements/pending",
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch pending announcements.");
+      }
+
+      const data = await response.json();
+      // Add a 'type' property for display purposes
+      const itemsWithType = data.map((item: any) => ({
+        ...item,
+        type: "Announcement",
+      }));
+      setApprovalItems(itemsWithType);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPendingAnnouncements();
+  }, []);
+
+  const handleDecision = async (
+    itemId: string,
     decision: "approved" | "rejected"
   ) => {
-    // In a real app, this would send an API request to the backend.
-    // Here, we'll just filter the item out of the list for demonstration.
-    setApprovalItems(approvalItems.filter((item) => item.id !== itemId));
+    const token = getAuthToken();
+    const newStatus =
+      decision === "approved"
+        ? AnnouncementStatus.APPROVED
+        : AnnouncementStatus.REJECTED;
+
+    try {
+      const response = await fetch(
+        `http://localhost:3001/announcements/${itemId}/status`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ status: newStatus }),
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to ${decision} the item.`);
+      }
+
+      // Remove the item from the list on the UI after a successful action
+      setApprovalItems((prevItems) =>
+        prevItems.filter((item) => item.id !== itemId)
+      );
+    } catch (err: any) {
+      setError(err.message);
+      // Optionally, show an alert to the user
+      alert(`Error: ${err.message}`);
+    }
   };
+
+  if (isLoading) return <div>Loading approvals...</div>;
+  if (error) return <div className="text-red-500">Error: {error}</div>;
 
   return (
     <div className="space-y-6">
@@ -62,20 +127,17 @@ export default function ApprovalsPage() {
             {approvalItems.map((item) => (
               <div key={item.id} className="rounded-lg border p-4">
                 <div className="flex flex-col justify-between gap-4 sm:flex-row">
-                  {/* Content Details */}
                   <div className="flex-1">
-                    <span
-                      className={`text-xs font-semibold uppercase ${item.type === "Announcement" ? "text-blue-600" : "text-purple-600"}`}
-                    >
+                    <span className="text-xs font-semibold uppercase text-blue-600">
                       {item.type}
                     </span>
                     <h3 className="text-lg font-bold">{item.title}</h3>
                     <p className="mt-1 text-sm text-gray-600">{item.content}</p>
                     <p className="mt-2 text-xs text-gray-500">
-                      Submitted by: {item.submittedBy}
+                      Submitted by: {item.author.firstName}{" "}
+                      {item.author.lastName}
                     </p>
                   </div>
-                  {/* Action Buttons */}
                   <div className="flex flex-shrink-0 items-center space-x-3">
                     <button
                       onClick={() => handleDecision(item.id, "approved")}
