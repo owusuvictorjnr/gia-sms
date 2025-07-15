@@ -9,6 +9,8 @@ import RollCallPage from "./components/RollCallPage";
 import GradebookPage from "./components/GradebookPage";
 import ApprovalsPage from "./components/ApprovalsPage";
 import TransactionsPage from "./components/TransactionsPage";
+import LinkParentChildPage from "./components/LinkParentChildPage";
+import CreateAnnouncementPage from "./components/CreateAnnouncementPage"; // Import the new page
 
 interface UserProfile {
   userId: string;
@@ -74,6 +76,10 @@ export default function DashboardLayout() {
         return <ApprovalsPage />;
       case "transactions":
         return <TransactionsPage />;
+      case "link-users":
+        return <LinkParentChildPage />;
+      case "create-announcement":
+        return <CreateAnnouncementPage />; // Add case for the new page
       default:
         return <p>Page not found.</p>;
     }
@@ -90,9 +96,9 @@ export default function DashboardLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="hidden w-64 flex-col bg-gray-600 text-white md:flex">
+      <div className="hidden w-64 flex-col bg-gray-800 text-white md:flex">
         <div className="p-6">
-          <h1 className="text-md font-bold">God Is Able Int. School</h1>
+          <h1 className="text-2xl font-bold">EduConnect+</h1>
         </div>
         <nav className="mt-6 flex-1">
           <a
@@ -118,10 +124,24 @@ export default function DashboardLayout() {
               >
                 Gradebook
               </a>
+              <a
+                href="#"
+                onClick={() => setActiveView("create-announcement")}
+                className={`block px-6 py-3 ${activeView === "create-announcement" ? "bg-gray-900" : ""}`}
+              >
+                New Announcement
+              </a>
             </>
           )}
           {profile?.role === "admin" && (
             <>
+              <a
+                href="#"
+                onClick={() => setActiveView("link-users")}
+                className={`block px-6 py-3 ${activeView === "link-users" ? "bg-gray-900" : ""}`}
+              >
+                Link Users
+              </a>
               <a
                 href="#"
                 onClick={() => setActiveView("approvals")}
