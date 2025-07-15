@@ -10,6 +10,8 @@ import { AttendanceModule } from "./attendance/attendance.module";
 import { Attendance } from "./attendance/attendance.entity";
 import { ParentModule } from "./parent/parent.module";
 import { AdminModule } from "./admin/admin.module";
+import { AnnouncementModule } from "./announcement/announcement.module";
+import { Announcement } from "./announcement/announcement.entity";
 
 @Module({
   imports: [
@@ -27,7 +29,7 @@ import { AdminModule } from "./admin/admin.module";
         username: configService.get<string>("DB_USERNAME"),
         password: configService.get<string>("DB_PASSWORD"),
         database: configService.get<string>("DB_DATABASE"),
-        entities: [User, Grade, Attendance],
+        entities: [User, Grade, Attendance, Announcement],
         synchronize: true,
       }),
     }),
@@ -37,8 +39,9 @@ import { AdminModule } from "./admin/admin.module";
     AttendanceModule, // Added AttendanceModule
     ParentModule, // Added ParentModule
     AdminModule, // Added AdminModule
+    AnnouncementModule, // Added AnnouncementModule
   ],
-  controllers: [], // Removed AppController
-  providers: [], // Removed AppService
+  controllers: [], 
+  providers: [],
 })
 export class AppModule {}
