@@ -8,6 +8,8 @@ import { User } from "./user/user.entity";
 import { Grade } from "./grade/grade.entity";
 import { AttendanceModule } from "./attendance/attendance.module";
 import { Attendance } from "./attendance/attendance.entity";
+import { ParentModule } from "./parent/parent.module";
+import { AdminModule } from "./admin/admin.module";
 
 @Module({
   imports: [
@@ -33,6 +35,8 @@ import { Attendance } from "./attendance/attendance.entity";
     AuthModule, // Added AuthModule
     GradeModule, // Added GradeModule
     AttendanceModule, // Added AttendanceModule
+    ParentModule, // Added ParentModule
+    AdminModule, // Added AdminModule
   ],
   controllers: [], // Removed AppController
   providers: [], // Removed AppService
