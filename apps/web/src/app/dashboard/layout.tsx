@@ -90,9 +90,9 @@ export default function DashboardLayout() {
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <div className="hidden w-64 flex-col bg-gray-800 text-white md:flex">
+      <div className="hidden w-64 flex-col bg-gray-600 text-white md:flex">
         <div className="p-6">
-          <h1 className="text-2xl font-bold">EduConnect+</h1>
+          <h1 className="text-md font-bold">God Is Able Int. School</h1>
         </div>
         <nav className="mt-6 flex-1">
           <a
