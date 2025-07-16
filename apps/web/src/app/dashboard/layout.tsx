@@ -8,9 +8,10 @@ import ParentDashboard from "./components/ParentDashboard";
 import RollCallPage from "./components/RollCallPage";
 import GradebookPage from "./components/GradebookPage";
 import ApprovalsPage from "./components/ApprovalsPage";
-import TransactionsPage from "./components/TransactionsPage";
 import LinkParentChildPage from "./components/LinkParentChildPage";
-import CreateAnnouncementPage from "./components/CreateAnnouncementPage"; // Import the new page
+import CreateAnnouncementPage from "./components/CreateAnnouncementPage";
+import FinancePage from "./components/FinancePage";
+import TransactionsPage from "./components/TransactionsPage"; // Import the new page
 
 interface UserProfile {
   userId: string;
@@ -74,12 +75,14 @@ export default function DashboardLayout() {
         return <GradebookPage />;
       case "approvals":
         return <ApprovalsPage />;
-      case "transactions":
-        return <TransactionsPage />;
       case "link-users":
         return <LinkParentChildPage />;
       case "create-announcement":
-        return <CreateAnnouncementPage />; // Add case for the new page
+        return <CreateAnnouncementPage />;
+      case "finance":
+        return <FinancePage />;
+      case "transactions":
+        return <TransactionsPage />; // Add case for the new page
       default:
         return <p>Page not found.</p>;
     }
@@ -133,8 +136,22 @@ export default function DashboardLayout() {
               </a>
             </>
           )}
-          {profile?.role === "admin" && (
+          {(profile?.role === "admin" || profile?.role === "accountant") && (
             <>
+              <a
+                href="#"
+                onClick={() => setActiveView("finance")}
+                className={`block px-6 py-3 ${activeView === "finance" ? "bg-gray-900" : ""}`}
+              >
+                Finance
+              </a>
+              <a
+                href="#"
+                onClick={() => setActiveView("transactions")}
+                className={`block px-6 py-3 ${activeView === "transactions" ? "bg-gray-900" : ""}`}
+              >
+                Transactions
+              </a>
               <a
                 href="#"
                 onClick={() => setActiveView("link-users")}
@@ -148,13 +165,6 @@ export default function DashboardLayout() {
                 className={`block px-6 py-3 ${activeView === "approvals" ? "bg-gray-900" : ""}`}
               >
                 Approvals
-              </a>
-              <a
-                href="#"
-                onClick={() => setActiveView("transactions")}
-                className={`block px-6 py-3 ${activeView === "transactions" ? "bg-gray-900" : ""}`}
-              >
-                Transactions
               </a>
             </>
           )}
