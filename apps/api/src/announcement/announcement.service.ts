@@ -1,11 +1,10 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
-import { Announcement,  } from "./announcement.entity";
+import { Announcement } from "./announcement.entity";
 import { CreateAnnouncementDto } from "./dto/create-announcement.dto";
 import { User } from "../user/user.entity";
 import { AnnouncementStatus } from "shared-types/src/announcement-status.enum";
-
 
 // AnnouncementService handles the business logic for announcements
 @Injectable()
@@ -32,7 +31,7 @@ export class AnnouncementService {
   async findPending(): Promise<Announcement[]> {
     return this.announcementsRepository.find({
       where: { status: AnnouncementStatus.PENDING },
-      relations: ["author"], // Include the author's details
+      relations: ["author"], // Include author details
       order: { createdAt: "DESC" },
     });
   }
@@ -54,5 +53,14 @@ export class AnnouncementService {
     }
 
     return this.announcementsRepository.save(announcement);
+  }
+
+  // New method to find all approved announcements for parents
+  async findAllApproved(): Promise<Announcement[]> {
+    return this.announcementsRepository.find({
+      where: { status: AnnouncementStatus.APPROVED },
+      relations: ["author"], // Include author details
+      order: { createdAt: "DESC" }, // Show newest first
+    });
   }
 }
