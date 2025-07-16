@@ -12,6 +12,9 @@ import { ParentModule } from "./parent/parent.module";
 import { AdminModule } from "./admin/admin.module";
 import { AnnouncementModule } from "./announcement/announcement.module";
 import { Announcement } from "./announcement/announcement.entity";
+import { FinanceModule } from "./finance/finance.module";
+import { Invoice } from "./finance/invoice.entity";
+import { FeeStructure } from "./finance/feestructure.entity";
 
 @Module({
   imports: [
@@ -29,7 +32,14 @@ import { Announcement } from "./announcement/announcement.entity";
         username: configService.get<string>("DB_USERNAME"),
         password: configService.get<string>("DB_PASSWORD"),
         database: configService.get<string>("DB_DATABASE"),
-        entities: [User, Grade, Attendance, Announcement],
+        entities: [
+          User,
+          Grade,
+          Attendance,
+          Announcement,
+          FeeStructure,
+          Invoice,
+        ],
         synchronize: true,
       }),
     }),
@@ -40,8 +50,9 @@ import { Announcement } from "./announcement/announcement.entity";
     ParentModule, // Added ParentModule
     AdminModule, // Added AdminModule
     AnnouncementModule, // Added AnnouncementModule
+    FinanceModule, // Added FinanceModule
   ],
-  controllers: [], 
+  controllers: [],
   providers: [],
 })
 export class AppModule {}
