@@ -23,7 +23,7 @@ export class AttendanceService {
 
   async createOrUpdate(
     createAttendanceDto: CreateAttendanceDto,
-    teacher: User
+    teacher: any // The user object from the JWT payload
   ): Promise<void> {
     const { date, records } = createAttendanceDto;
 
@@ -40,7 +40,7 @@ export class AttendanceService {
       if (existingRecord) {
         // If it exists, update it
         existingRecord.status = record.status;
-        existingRecord.teacherId = teacher.id;
+        existingRecord.teacherId = teacher.userId; // FIX: Use teacher.userId
         await this.attendanceRepository.save(existingRecord);
       } else {
         // If it doesn't exist, create a new one
@@ -48,7 +48,7 @@ export class AttendanceService {
           studentId: record.studentId,
           date: date,
           status: record.status,
-          teacherId: teacher.id,
+          teacherId: teacher.userId, // FIX: Use teacher.userId
         });
         await this.attendanceRepository.save(newRecord);
       }
