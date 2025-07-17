@@ -6,8 +6,7 @@ import { InitiateTransactionDto } from "./dto/initiate-transaction.dto";
 import { User } from "../user/user.entity";
 import { Invoice, InvoiceStatus } from "../finance/invoice.entity";
 
-
-// TransactionService contains the business logic for handling transactions
+//TransactionService contains the business logic for handling transactions
 // It interacts with the database to create and manage transaction records
 // and processes webhooks from payment gateways like Paystack.
 @Injectable()
