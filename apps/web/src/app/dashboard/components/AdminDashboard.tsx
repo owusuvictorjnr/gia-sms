@@ -1,45 +1,85 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 
 interface AdminDashboardProps {
   setView: (view: string) => void;
 }
 
+interface DashboardStats {
+  totalStudents: number;
+  teachers: number;
+  pendingApprovals: number;
+  revenueToday: number;
+}
+
+// Helper function to get the auth token
+const getAuthToken = (): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("access_token");
+  }
+  return null;
+};
+
 export default function AdminDashboard({ setView }: AdminDashboardProps) {
-  // In a real app, this data would come from API calls.
-  const schoolStats = {
-    totalStudents: 485,
-    teachers: 32,
-    pendingApprovals: 3,
-  };
-  const revenueToday = "4,500.00";
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        setError("Authentication error.");
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch(
+          "http://localhost:3001/admin/dashboard-stats",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!response.ok) throw new Error("Failed to fetch dashboard stats.");
+        const data = await response.json();
+        setStats(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchStats();
+  }, []);
+
+  if (isLoading) return <div>Loading dashboard stats...</div>;
+  if (error) return <div className="text-red-500">Error: {error}</div>;
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Admin Dashboard</h2>
         <p className="mt-1 text-gray-600">
-          Welcome! Here is the school's high-level overview.
+          Welcome! Here is the school's real-time overview.
         </p>
       </div>
 
-      {/* Main Stats Grid */}
       <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
         <div className="rounded-lg bg-white p-6 shadow">
           <h3 className="text-sm font-medium text-gray-500">Total Students</h3>
           <p className="mt-2 text-3xl font-bold text-gray-800">
-            {schoolStats.totalStudents}
+            {stats?.totalStudents}
           </p>
         </div>
         <div className="rounded-lg bg-white p-6 shadow">
           <h3 className="text-sm font-medium text-gray-500">Teachers</h3>
           <p className="mt-2 text-3xl font-bold text-gray-800">
-            {schoolStats.teachers}
+            {stats?.teachers}
           </p>
         </div>
         <div className="rounded-lg bg-white p-6 shadow">
           <h3 className="text-sm font-medium text-gray-500">Revenue Today</h3>
           <p className="mt-2 text-3xl font-bold text-green-600">
-            GHS {revenueToday}
+            GHS {stats?.revenueToday.toFixed(2)}
           </p>
         </div>
         <div className="rounded-lg bg-yellow-100 p-6 shadow">
@@ -47,7 +87,7 @@ export default function AdminDashboard({ setView }: AdminDashboardProps) {
             Pending Approvals
           </h3>
           <p className="mt-2 text-3xl font-bold text-yellow-900">
-            {schoolStats.pendingApprovals}
+            {stats?.pendingApprovals}
           </p>
           <button
             onClick={() => setView("approvals")}
