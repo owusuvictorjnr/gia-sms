@@ -1,9 +1,5 @@
 import { useState, useEffect } from "react";
 
-// This component fetches and displays all invoices/transactions for the logged-in user
-// It shows the student's name, fee structure, amount, due date, and status of each
-// invoice in a table format.
-
 // Define data shapes
 interface Invoice {
   id: string;
@@ -16,7 +12,7 @@ interface Invoice {
   };
   feeStructure: {
     name: string;
-    amount: number;
+    amount: string; // The amount comes from the API as a string
   };
 }
 
@@ -98,7 +94,8 @@ export default function TransactionsPage() {
                 </td>
                 <td className="p-4">{invoice.feeStructure.name}</td>
                 <td className="p-4 font-medium">
-                  {invoice.feeStructure.amount.toFixed(2)}
+                  {/* FIX: Convert the string to a number before calling toFixed */}
+                  {parseFloat(invoice.feeStructure.amount).toFixed(2)}
                 </td>
                 <td className="p-4">
                   {new Date(invoice.dueDate).toLocaleDateString()}
