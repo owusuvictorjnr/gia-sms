@@ -1,9 +1,5 @@
 import { useState, useEffect } from "react";
 
-// ParentDashboard component displays a parent's dashboard with their children's information, grades, and attendance summary.
-// It fetches data from the API and allows parents to view their children's progress.
-// This component assumes the parent is authenticated and has access to their children's data.
-
 // Define the shapes of our data
 interface Child {
   id: string;
@@ -25,6 +21,16 @@ interface AttendanceSummary {
   late: number;
 }
 
+interface Invoice {
+  id: string;
+  status: "unpaid" | "paid" | "overdue";
+  dueDate: string;
+  feeStructure: {
+    name: string;
+    amount: string;
+  };
+}
+
 // Helper function to get the auth token
 const getAuthToken = (): string | null => {
   if (typeof window !== "undefined") {
@@ -37,8 +43,10 @@ export default function ParentDashboard() {
   const [children, setChildren] = useState<Child[]>([]);
   const [selectedChildId, setSelectedChildId] = useState<string | null>(null);
 
+  // State for the dynamic widgets
   const [grades, setGrades] = useState<Grade[]>([]);
   const [attendance, setAttendance] = useState<AttendanceSummary | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
@@ -89,31 +97,33 @@ export default function ParentDashboard() {
       if (!token) return;
 
       try {
-        // Fetch grades and attendance summary in parallel
-        const [gradesRes, attendanceRes] = await Promise.all([
+        const [gradesRes, attendanceRes, invoicesRes] = await Promise.all([
           fetch(
             `http://localhost:3001/parent/child/${selectedChildId}/grades`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
+            { headers: { Authorization: `Bearer ${token}` } }
           ),
           fetch(
             `http://localhost:3001/parent/child/${selectedChildId}/attendance-summary`,
-            {
-              headers: { Authorization: `Bearer ${token}` },
-            }
+            { headers: { Authorization: `Bearer ${token}` } }
+          ),
+          fetch(
+            `http://localhost:3001/finance/invoices/student/${selectedChildId}`,
+            { headers: { Authorization: `Bearer ${token}` } }
           ),
         ]);
 
         if (!gradesRes.ok) throw new Error("Failed to fetch grades.");
         if (!attendanceRes.ok)
           throw new Error("Failed to fetch attendance summary.");
+        if (!invoicesRes.ok) throw new Error("Failed to fetch invoices.");
 
         const gradesData = await gradesRes.json();
         const attendanceData = await attendanceRes.json();
+        const invoicesData = await invoicesRes.json();
 
         setGrades(gradesData);
         setAttendance(attendanceData);
+        setInvoices(invoicesData);
       } catch (err: any) {
         setError(err.message);
       }
@@ -122,8 +132,36 @@ export default function ParentDashboard() {
     fetchChildData();
   }, [selectedChildId]);
 
+  const handlePayNow = async (invoiceId: string) => {
+    const token = getAuthToken();
+    try {
+      const response = await fetch(
+        "http://localhost:3001/transactions/initiate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ invoiceId }),
+        }
+      );
+      if (!response.ok) throw new Error("Failed to initiate payment.");
+
+      const data = await response.json();
+      // Redirect the user to the payment gateway's page
+      window.location.href = data.authorization_url;
+    } catch (err: any) {
+      alert(err.message);
+    }
+  };
+
   if (isLoading) return <div>Loading dashboard...</div>;
   if (error) return <div className="text-red-500">Error: {error}</div>;
+
+  const unpaidInvoices = invoices.filter(
+    (inv) => inv.status === "unpaid" || inv.status === "overdue"
+  );
 
   return (
     <div className="space-y-6">
@@ -168,66 +206,92 @@ export default function ParentDashboard() {
       )}
 
       {selectedChildId && (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-          <div className="transform rounded-lg border-l-4 border-red-500 bg-white p-6 shadow transition-transform hover:scale-105">
-            <h3 className="text-lg font-semibold text-gray-700">
-              Outstanding Balance
-            </h3>
-            <p className="mt-2 text-3xl font-bold text-gray-800">
-              GHS 1,500.00
-            </p>
-            <p className="text-sm text-gray-500">Due: July 15, 2025</p>
-            <button className="mt-4 w-full rounded-md bg-red-500 py-2 font-semibold text-white hover:bg-red-600">
-              Pay Now
-            </button>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <div className="transform rounded-lg bg-white p-6 shadow transition-transform hover:scale-105">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  Recent Grades
+                </h3>
+                {grades.length > 0 ? (
+                  <ul className="mt-2 space-y-2">
+                    {grades.map((grade) => (
+                      <li key={grade.id} className="flex justify-between">
+                        <span>{grade.assessment}</span>
+                        <span className="font-bold">{grade.score}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">No grades found.</p>
+                )}
+              </div>
+              <div className="transform rounded-lg bg-white p-6 shadow transition-transform hover:scale-105">
+                <h3 className="text-lg font-semibold text-gray-700">
+                  Attendance (Term)
+                </h3>
+                {attendance ? (
+                  <div className="mt-2 flex justify-around text-center">
+                    <div>
+                      <p className="text-3xl font-bold text-green-600">
+                        {attendance.present}
+                      </p>
+                      <p className="text-sm text-gray-500">Present</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-red-600">
+                        {attendance.absent}
+                      </p>
+                      <p className="text-sm text-gray-500">Absent</p>
+                    </div>
+                    <div>
+                      <p className="text-3xl font-bold text-yellow-500">
+                        {attendance.late}
+                      </p>
+                      <p className="text-sm text-gray-500">Late</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-sm text-gray-500">
+                    No attendance data.
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
-          <div className="transform rounded-lg bg-white p-6 shadow transition-transform hover:scale-105">
+          <div className="rounded-lg bg-white p-6 shadow lg:col-span-1">
             <h3 className="text-lg font-semibold text-gray-700">
-              Recent Grades
+              Outstanding Payments
             </h3>
-            {grades.length > 0 ? (
-              <ul className="mt-2 space-y-2">
-                {grades.map((grade) => (
-                  <li key={grade.id} className="flex justify-between">
-                    <span>{grade.assessment}</span>
-                    <span className="font-bold">{grade.score}</span>
-                  </li>
+            {unpaidInvoices.length > 0 ? (
+              <div className="mt-2 space-y-4">
+                {unpaidInvoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="rounded-md border border-red-200 bg-red-50 p-4"
+                  >
+                    <p className="font-semibold text-red-800">
+                      {invoice.feeStructure.name}
+                    </p>
+                    <p className="text-2xl font-bold text-red-900">
+                      GHS {parseFloat(invoice.feeStructure.amount).toFixed(2)}
+                    </p>
+                    <p className="text-sm text-red-700">
+                      Due: {new Date(invoice.dueDate).toLocaleDateString()}
+                    </p>
+                    <button
+                      onClick={() => handlePayNow(invoice.id)}
+                      className="mt-4 w-full rounded-md bg-red-500 py-2 font-semibold text-white hover:bg-red-600"
+                    >
+                      Pay Now
+                    </button>
+                  </div>
                 ))}
-              </ul>
-            ) : (
-              <p className="mt-2 text-sm text-gray-500">No grades found.</p>
-            )}
-          </div>
-
-          <div className="transform rounded-lg bg-white p-6 shadow transition-transform hover:scale-105">
-            <h3 className="text-lg font-semibold text-gray-700">
-              Attendance (Term)
-            </h3>
-            {attendance ? (
-              <div className="mt-2 flex justify-around text-center">
-                <div>
-                  <p className="text-3xl font-bold text-green-600">
-                    {attendance.present}
-                  </p>
-                  <p className="text-sm text-gray-500">Present</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-red-600">
-                    {attendance.absent}
-                  </p>
-                  <p className="text-sm text-gray-500">Absent</p>
-                </div>
-                <div>
-                  <p className="text-3xl font-bold text-yellow-500">
-                    {attendance.late}
-                  </p>
-                  <p className="text-sm text-gray-500">Late</p>
-                </div>
               </div>
             ) : (
               <p className="mt-2 text-sm text-gray-500">
-                No attendance data found.
+                No outstanding payments.
               </p>
             )}
           </div>
