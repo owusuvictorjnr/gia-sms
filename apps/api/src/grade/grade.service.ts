@@ -6,6 +6,7 @@ import { CreateGradeDto } from "./dto/create-grade.dto";
 import { User } from "../user/user.entity";
 
 // The GradeService is responsible for managing grades in the application.
+
 @Injectable()
 export class GradeService {
   constructor(
@@ -13,10 +14,10 @@ export class GradeService {
     private gradesRepository: Repository<Grade>
   ) {}
 
-  async create(createGradeDto: CreateGradeDto, teacher: User): Promise<Grade> {
+  async create(createGradeDto: CreateGradeDto, teacher: any): Promise<Grade> {
     const newGrade = this.gradesRepository.create({
       ...createGradeDto,
-      teacherId: teacher.id, // Link the grade to the teacher who is creating it
+      teacherId: teacher.userId, // FIX: Use teacher.userId from the JWT payload
     });
 
     return this.gradesRepository.save(newGrade);
