@@ -12,7 +12,6 @@ import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { User } from "../user/user.entity";
 import { GetUser } from "src/auth/get-user.decorator";
 
-
 // TransactionController handles routes related to transactions
 @Controller("transactions")
 export class TransactionController {
