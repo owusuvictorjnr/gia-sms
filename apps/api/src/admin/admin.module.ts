@@ -4,13 +4,15 @@ import { User } from "../user/user.entity";
 import { AdminController } from "./admin.controller";
 import { AdminService } from "./admin.service";
 import { AuthModule } from "../auth/auth.module";
+import { Announcement } from "../announcement/announcement.entity";
+import { Transaction } from "../transaction/transaction.entity";
+import { Invoice } from "../finance/invoice.entity"; // Import Invoice
 
-
-// AdminModule is responsible for admin-specific functionality
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
-    AuthModule, // For JwtAuthGuard
+    // Add Invoice to the list of entities for this module
+    TypeOrmModule.forFeature([User, Announcement, Transaction, Invoice]),
+    AuthModule,
   ],
   controllers: [AdminController],
   providers: [AdminService],
