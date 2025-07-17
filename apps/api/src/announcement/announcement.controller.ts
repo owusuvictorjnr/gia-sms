@@ -28,7 +28,7 @@ export class AnnouncementController {
   @Roles(UserRole.TEACHER) // Only teachers can create announcements
   create(
     @Body(new ValidationPipe()) createAnnouncementDto: CreateAnnouncementDto,
-    @GetUser() author: User
+    @GetUser() author: any // The user object from the JWT payload
   ) {
     return this.announcementService.create(createAnnouncementDto, author);
   }
@@ -47,7 +47,7 @@ export class AnnouncementController {
     @Param("id") id: string,
     @Body(new ValidationPipe())
     updateAnnouncementStatusDto: UpdateAnnouncementStatusDto,
-    @GetUser() admin: User
+    @GetUser() admin: any // The user object from the JWT payload
   ) {
     return this.announcementService.updateStatus(
       id,
