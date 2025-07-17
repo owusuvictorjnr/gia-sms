@@ -27,7 +27,7 @@ export class GradeController {
   @Post()
   create(
     @Body(new ValidationPipe()) createGradeDto: CreateGradeDto,
-    @GetUser() user: User // Use our custom decorator to get the logged-in user
+    @GetUser() user: any // Use 'any' to match the JWT payload shape
   ) {
     // Here you might add a check to ensure user.role is 'teacher'
     return this.gradeService.create(createGradeDto, user);
