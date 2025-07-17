@@ -11,7 +11,8 @@ import ApprovalsPage from "./components/ApprovalsPage";
 import LinkParentChildPage from "./components/LinkParentChildPage";
 import CreateAnnouncementPage from "./components/CreateAnnouncementPage";
 import FinancePage from "./components/FinancePage";
-import TransactionsPage from "./components/TransactionsPage"; // Import the new page
+import TransactionsPage from "./components/TransactionsPage";
+import AnnouncementsPage from "./components/AnnouncementsPage"; // Import the new page
 
 interface UserProfile {
   userId: string;
@@ -82,7 +83,9 @@ export default function DashboardLayout() {
       case "finance":
         return <FinancePage />;
       case "transactions":
-        return <TransactionsPage />; // Add case for the new page
+        return <TransactionsPage />;
+      case "announcements":
+        return <AnnouncementsPage />; // Add case for the new page
       default:
         return <p>Page not found.</p>;
     }
@@ -111,6 +114,14 @@ export default function DashboardLayout() {
           >
             Dashboard
           </a>
+          <a
+            href="#"
+            onClick={() => setActiveView("announcements")}
+            className={`block px-6 py-3 ${activeView === "announcements" ? "bg-gray-900" : ""}`}
+          >
+            Announcements
+          </a>
+
           {profile?.role === "teacher" && (
             <>
               <a
