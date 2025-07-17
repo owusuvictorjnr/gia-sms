@@ -17,13 +17,14 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { User, UserRole } from "../user/user.entity";
 import { GetUser } from "src/auth/get-user.decorator";
 
-// This controller handles all announcement-related routes
+// AnnouncementController handles routes related to announcements
 @Controller("announcements")
-@UseGuards(JwtAuthGuard, RolesGuard) // Protect all routes in this controller
+@UseGuards(JwtAuthGuard) // Protect all routes in this controller by default
 export class AnnouncementController {
   constructor(private readonly announcementService: AnnouncementService) {}
 
   @Post()
+  @UseGuards(RolesGuard)
   @Roles(UserRole.TEACHER) // Only teachers can create announcements
   create(
     @Body(new ValidationPipe()) createAnnouncementDto: CreateAnnouncementDto,
@@ -33,12 +34,14 @@ export class AnnouncementController {
   }
 
   @Get("pending")
+  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN) // Only admins can see pending announcements
   findPending() {
     return this.announcementService.findPending();
   }
 
   @Patch(":id/status")
+  @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN) // Only admins can update the status
   updateStatus(
     @Param("id") id: string,
@@ -51,5 +54,12 @@ export class AnnouncementController {
       updateAnnouncementStatusDto.status,
       admin
     );
+  }
+
+  // New endpoint for parents to view approved announcements
+  @Get("approved")
+  findAllApproved() {
+    // Any authenticated user can access this
+    return this.announcementService.findAllApproved();
   }
 }
