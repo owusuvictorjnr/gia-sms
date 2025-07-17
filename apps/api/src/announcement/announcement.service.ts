@@ -4,10 +4,9 @@ import { Repository } from "typeorm";
 import { Announcement } from "./announcement.entity";
 import { CreateAnnouncementDto } from "./dto/create-announcement.dto";
 import { User } from "../user/user.entity";
-import { AnnouncementStatus } from "shared-types/src/announcement-status.enum";
+import { AnnouncementStatus } from "shared-types/src/announcement-status.enum"; // Import from shared package
 
-// AnnouncementService handles the business logic for announcements
-@Injectable()
+// AnnouncementService handles the business logic for announcements@Injectable()
 export class AnnouncementService {
   constructor(
     @InjectRepository(Announcement)
@@ -17,11 +16,11 @@ export class AnnouncementService {
   // For a teacher to create a new announcement
   async create(
     createAnnouncementDto: CreateAnnouncementDto,
-    author: User
+    author: any // The user object from the JWT payload
   ): Promise<Announcement> {
     const newAnnouncement = this.announcementsRepository.create({
       ...createAnnouncementDto,
-      authorId: author.id,
+      authorId: author.userId,
       status: AnnouncementStatus.PENDING,
     });
     return this.announcementsRepository.save(newAnnouncement);
@@ -31,7 +30,7 @@ export class AnnouncementService {
   async findPending(): Promise<Announcement[]> {
     return this.announcementsRepository.find({
       where: { status: AnnouncementStatus.PENDING },
-      relations: ["author"], // Include author details
+      relations: ["author"], // Include the author's details
       order: { createdAt: "DESC" },
     });
   }
@@ -40,7 +39,7 @@ export class AnnouncementService {
   async updateStatus(
     id: string,
     status: AnnouncementStatus,
-    admin: User
+    admin: any // The user object from the JWT payload
   ): Promise<Announcement> {
     const announcement = await this.announcementsRepository.findOneBy({ id });
     if (!announcement) {
@@ -49,7 +48,7 @@ export class AnnouncementService {
 
     announcement.status = status;
     if (status === AnnouncementStatus.APPROVED) {
-      announcement.approvedById = admin.id;
+      announcement.approvedById = admin.userId;
     }
 
     return this.announcementsRepository.save(announcement);
