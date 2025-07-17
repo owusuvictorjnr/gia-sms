@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
 import ParentDashboard from "./components/ParentDashboard";
+import AccountantDashboard from "./components/AccountantDashboard"; // Import new component
 import RollCallPage from "./components/RollCallPage";
 import GradebookPage from "./components/GradebookPage";
 import ApprovalsPage from "./components/ApprovalsPage";
@@ -12,7 +13,8 @@ import LinkParentChildPage from "./components/LinkParentChildPage";
 import CreateAnnouncementPage from "./components/CreateAnnouncementPage";
 import FinancePage from "./components/FinancePage";
 import TransactionsPage from "./components/TransactionsPage";
-import AnnouncementsPage from "./components/AnnouncementsPage"; // Import the new page
+import AnnouncementsPage from "./components/AnnouncementsPage";
+import UserManagementPage from "./components/UserManagementPage";
 
 interface UserProfile {
   userId: string;
@@ -67,6 +69,8 @@ export default function DashboardLayout() {
             return <TeacherDashboard setView={setActiveView} />;
           case "parent":
             return <ParentDashboard />;
+          case "accountant":
+            return <AccountantDashboard setView={setActiveView} />; // Add case for accountant
           default:
             return <p>No dashboard for your role.</p>;
         }
@@ -85,7 +89,9 @@ export default function DashboardLayout() {
       case "transactions":
         return <TransactionsPage />;
       case "announcements":
-        return <AnnouncementsPage />; // Add case for the new page
+        return <AnnouncementsPage />;
+      case "user-management":
+        return <UserManagementPage />;
       default:
         return <p>Page not found.</p>;
     }
@@ -147,8 +153,35 @@ export default function DashboardLayout() {
               </a>
             </>
           )}
-          {(profile?.role === "admin" || profile?.role === "accountant") && (
+
+          {profile?.role === "accountant" && (
             <>
+              <a
+                href="#"
+                onClick={() => setActiveView("finance")}
+                className={`block px-6 py-3 ${activeView === "finance" ? "bg-gray-900" : ""}`}
+              >
+                Finance
+              </a>
+              <a
+                href="#"
+                onClick={() => setActiveView("transactions")}
+                className={`block px-6 py-3 ${activeView === "transactions" ? "bg-gray-900" : ""}`}
+              >
+                Transactions
+              </a>
+            </>
+          )}
+
+          {profile?.role === "admin" && (
+            <>
+              <a
+                href="#"
+                onClick={() => setActiveView("user-management")}
+                className={`block px-6 py-3 ${activeView === "user-management" ? "bg-gray-900" : ""}`}
+              >
+                User Management
+              </a>
               <a
                 href="#"
                 onClick={() => setActiveView("finance")}
