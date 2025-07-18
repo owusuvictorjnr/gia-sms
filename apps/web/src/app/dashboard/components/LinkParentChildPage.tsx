@@ -1,4 +1,17 @@
+"use client";
+
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 // Define the shape of the user data for this component
 interface UserSearchResult {
@@ -16,11 +29,6 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
-/**
- * LinkParentChildPage component allows admins to link a parent to a child.
- * It provides search functionality for both parents and students,
- * and allows linking them together.
- */
 export default function LinkParentChildPage() {
   const [parentQuery, setParentQuery] = useState("");
   const [studentQuery, setStudentQuery] = useState("");
@@ -34,10 +42,14 @@ export default function LinkParentChildPage() {
   const [selectedStudent, setSelectedStudent] =
     useState<UserSearchResult | null>(null);
 
-  const [message, setMessage] = useState("");
+  const { toast } = useToast();
 
   const handleSearch = async (role: "parent" | "student", query: string) => {
-    if (query.length < 2) return; // Don't search for less than 2 characters
+    if (query.length < 2) {
+      // Clear results if query is too short
+      role === "parent" ? setParentResults([]) : setStudentResults([]);
+      return;
+    }
     const token = getAuthToken();
     try {
       const response = await fetch(
@@ -54,17 +66,24 @@ export default function LinkParentChildPage() {
         setStudentResults(data);
       }
     } catch (error: any) {
-      setMessage(error.message);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleLink = async () => {
     if (!selectedParent || !selectedStudent) {
-      setMessage("Please select both a parent and a student.");
+      toast({
+        title: "Error",
+        description: "Please select both a parent and a student.",
+        variant: "destructive",
+      });
       return;
     }
     const token = getAuthToken();
-    setMessage("Linking...");
     try {
       const response = await fetch(
         "http://localhost:3001/admin/link-parent-child",
@@ -82,9 +101,10 @@ export default function LinkParentChildPage() {
       );
       if (!response.ok) throw new Error("Failed to link users.");
 
-      setMessage(
-        `Successfully linked ${selectedParent.firstName} to ${selectedStudent.firstName}!`
-      );
+      toast({
+        title: "Success",
+        description: `Successfully linked ${selectedParent.firstName} to ${selectedStudent.firstName}!`,
+      });
       // Clear selections after successful linking
       setSelectedParent(null);
       setSelectedStudent(null);
@@ -93,7 +113,11 @@ export default function LinkParentChildPage() {
       setParentResults([]);
       setStudentResults([]);
     } catch (error: any) {
-      setMessage(error.message);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -101,93 +125,108 @@ export default function LinkParentChildPage() {
     `${user.firstName} ${user.lastName} (${user.email})`;
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h2 className="mb-4 border-b pb-4 text-2xl font-bold text-gray-800">
-        Link Parent to Child
-      </h2>
-      <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-        {/* Parent Search */}
-        <div>
-          <h3 className="font-semibold">1. Find Parent</h3>
-          <input
-            type="text"
-            value={parentQuery}
-            onChange={(e) => {
-              setParentQuery(e.target.value);
-              handleSearch("parent", e.target.value);
-            }}
-            placeholder="Search by parent name or email..."
-            className="mt-2 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-          <ul className="mt-2 h-32 overflow-y-auto rounded-md border">
-            {parentResults.map((user) => (
-              <li
-                key={user.id}
-                onClick={() => {
-                  setSelectedParent(user);
-                  setParentResults([]);
-                }}
-                className="cursor-pointer p-2 hover:bg-indigo-100"
-              >
-                {renderUser(user)}
-              </li>
-            ))}
-          </ul>
+    <Card>
+      <CardHeader>
+        <CardTitle>Link Parent to Child</CardTitle>
+        <CardDescription>
+          Use this tool to associate a parent account with a student account.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+          {/* Parent Search */}
+          <div className="space-y-2">
+            <Label htmlFor="parent-search">1. Find Parent</Label>
+            <Input
+              id="parent-search"
+              type="text"
+              value={parentQuery}
+              onChange={(e) => {
+                setParentQuery(e.target.value);
+                handleSearch("parent", e.target.value);
+              }}
+              placeholder="Search by parent name or email..."
+            />
+            <div className="h-32 overflow-y-auto rounded-md border">
+              {parentResults.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => {
+                    setSelectedParent(user);
+                    setParentResults([]);
+                    setParentQuery(renderUser(user));
+                  }}
+                  className="cursor-pointer p-2 hover:bg-gray-100"
+                >
+                  {renderUser(user)}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Student Search */}
+          <div className="space-y-2">
+            <Label htmlFor="student-search">2. Find Student</Label>
+            <Input
+              id="student-search"
+              type="text"
+              value={studentQuery}
+              onChange={(e) => {
+                setStudentQuery(e.target.value);
+                handleSearch("student", e.target.value);
+              }}
+              placeholder="Search by student name or email..."
+            />
+            <div className="mt-2 h-32 overflow-y-auto rounded-md border">
+              {studentResults.map((user) => (
+                <div
+                  key={user.id}
+                  onClick={() => {
+                    setSelectedStudent(user);
+                    setStudentResults([]);
+                    setStudentQuery(renderUser(user));
+                  }}
+                  className="cursor-pointer p-2 hover:bg-gray-100"
+                >
+                  {renderUser(user)}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
-        {/* Student Search */}
-        <div>
-          <h3 className="font-semibold">2. Find Student</h3>
-          <input
-            type="text"
-            value={studentQuery}
-            onChange={(e) => {
-              setStudentQuery(e.target.value);
-              handleSearch("student", e.target.value);
-            }}
-            placeholder="Search by student name or email..."
-            className="mt-2 w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-          <ul className="mt-2 h-32 overflow-y-auto rounded-md border">
-            {studentResults.map((user) => (
-              <li
-                key={user.id}
-                onClick={() => {
-                  setSelectedStudent(user);
-                  setStudentResults([]);
-                }}
-                className="cursor-pointer p-2 hover:bg-indigo-100"
-              >
-                {renderUser(user)}
-              </li>
-            ))}
-          </ul>
+        {/* Selections and Link Button */}
+        <div className="border-t pt-6">
+          <div className="mb-4 space-y-2 rounded-md border bg-gray-50 p-4">
+            <p>
+              <span className="font-semibold text-gray-600">
+                Selected Parent:
+              </span>{" "}
+              {selectedParent ? (
+                renderUser(selectedParent)
+              ) : (
+                <span className="text-gray-500">None</span>
+              )}
+            </p>
+            <p>
+              <span className="font-semibold text-gray-600">
+                Selected Student:
+              </span>{" "}
+              {selectedStudent ? (
+                renderUser(selectedStudent)
+              ) : (
+                <span className="text-gray-500">None</span>
+              )}
+            </p>
+          </div>
+          <Button
+            onClick={handleLink}
+            disabled={!selectedParent || !selectedStudent}
+          >
+            Link Parent to Child
+          </Button>
         </div>
-      </div>
-
-      {/* Selections and Link Button */}
-      <div className="mt-6 border-t pt-6">
-        <div className="mb-4">
-          <p>
-            <span className="font-semibold">Selected Parent:</span>{" "}
-            {selectedParent ? renderUser(selectedParent) : "None"}
-          </p>
-          <p>
-            <span className="font-semibold">Selected Student:</span>{" "}
-            {selectedStudent ? renderUser(selectedStudent) : "None"}
-          </p>
-        </div>
-        <button
-          onClick={handleLink}
-          disabled={!selectedParent || !selectedStudent}
-          className="w-full rounded-md bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-400 sm:w-auto sm:px-8"
-        >
-          Link Parent to Child
-        </button>
-        {message && (
-          <p className="mt-4 text-sm font-medium text-gray-700">{message}</p>
-        )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }
