@@ -1,4 +1,25 @@
+"use client";
+
 import { useState, useEffect, FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 // Define data shapes
 interface FeeStructure {
@@ -26,7 +47,7 @@ export default function FinancePage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
+  const { toast } = useToast();
 
   // State for Create Fee Structure form
   const [fsName, setFsName] = useState("");
@@ -76,7 +97,6 @@ export default function FinancePage() {
 
   const handleCreateFeeStructure = async (e: FormEvent) => {
     e.preventDefault();
-    setMessage("");
     const token = getAuthToken();
     try {
       const response = await fetch(
@@ -98,19 +118,25 @@ export default function FinancePage() {
       if (!response.ok) throw new Error("Failed to create fee structure.");
       const newFs = await response.json();
       setFeeStructures([...feeStructures, newFs]);
-      setMessage("Fee structure created successfully!");
+      toast({
+        title: "Success",
+        description: "Fee structure created successfully!",
+      });
       setFsName("");
       setFsDescription("");
       setFsAmount("");
       setFsYear("");
     } catch (err: any) {
-      setMessage(err.message);
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
   const handleCreateInvoice = async (e: FormEvent) => {
     e.preventDefault();
-    setMessage("");
     const token = getAuthToken();
     try {
       const response = await fetch("http://localhost:3001/finance/invoices", {
@@ -126,12 +152,16 @@ export default function FinancePage() {
         }),
       });
       if (!response.ok) throw new Error("Failed to create invoice.");
-      setMessage("Invoice created successfully!");
+      toast({ title: "Success", description: "Invoice created successfully!" });
       setInvStudent("");
       setInvFeeStructure("");
       setInvDueDate("");
     } catch (err: any) {
-      setMessage(err.message);
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     }
   };
 
@@ -141,108 +171,125 @@ export default function FinancePage() {
   return (
     <div className="space-y-8">
       {/* Create Fee Structure Section */}
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 border-b pb-4 text-2xl font-bold text-gray-800">
-          Manage Fee Structures
-        </h2>
-        <form onSubmit={handleCreateFeeStructure} className="space-y-4">
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <input
-              type="text"
-              value={fsName}
-              onChange={(e) => setFsName(e.target.value)}
-              placeholder="Fee Name (e.g., Term 1 Fees)"
-              className="rounded-md border-gray-300"
-              required
-            />
-            <input
-              type="text"
-              value={fsYear}
-              onChange={(e) => setFsYear(e.target.value)}
-              placeholder="Academic Year (e.g., 2024/2025)"
-              className="rounded-md border-gray-300"
-              required
-            />
-            <textarea
-              value={fsDescription}
-              onChange={(e) => setFsDescription(e.target.value)}
-              placeholder="Description"
-              className="rounded-md border-gray-300 md:col-span-2"
-              required
-            />
-            <input
-              type="number"
-              value={fsAmount}
-              onChange={(e) => setFsAmount(e.target.value)}
-              placeholder="Amount (GHS)"
-              className="rounded-md border-gray-300"
-              required
-            />
-          </div>
-          <button
-            type="submit"
-            className="rounded-md bg-indigo-600 px-4 py-2 font-semibold text-white hover:bg-indigo-700"
-          >
-            Create Fee Structure
-          </button>
-        </form>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Fee Structures</CardTitle>
+          <CardDescription>
+            Create reusable fee items that can be assigned to students.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleCreateFeeStructure} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="fs-name">Fee Name</Label>
+                <Input
+                  id="fs-name"
+                  value={fsName}
+                  onChange={(e) => setFsName(e.target.value)}
+                  placeholder="e.g., Term 1 Fees"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fs-year">Academic Year</Label>
+                <Input
+                  id="fs-year"
+                  value={fsYear}
+                  onChange={(e) => setFsYear(e.target.value)}
+                  placeholder="e.g., 2024/2025"
+                  required
+                />
+              </div>
+              <div className="space-y-2 md:col-span-2">
+                <Label htmlFor="fs-desc">Description</Label>
+                <Textarea
+                  id="fs-desc"
+                  value={fsDescription}
+                  onChange={(e) => setFsDescription(e.target.value)}
+                  placeholder="Description"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="fs-amount">Amount (GHS)</Label>
+                <Input
+                  id="fs-amount"
+                  type="number"
+                  value={fsAmount}
+                  onChange={(e) => setFsAmount(e.target.value)}
+                  placeholder="e.g., 1500.00"
+                  required
+                />
+              </div>
+            </div>
+            <Button type="submit">Create Fee Structure</Button>
+          </form>
+        </CardContent>
+      </Card>
 
       {/* Create Invoice Section */}
-      <div className="rounded-lg bg-white p-6 shadow">
-        <h2 className="mb-4 border-b pb-4 text-2xl font-bold text-gray-800">
-          Generate New Invoice
-        </h2>
-        <form
-          onSubmit={handleCreateInvoice}
-          className="grid grid-cols-1 gap-6 md:grid-cols-3"
-        >
-          <select
-            value={invStudent}
-            onChange={(e) => setInvStudent(e.target.value)}
-            className="rounded-md border-gray-300"
-            required
+      <Card>
+        <CardHeader>
+          <CardTitle>Generate New Invoice</CardTitle>
+          <CardDescription>
+            Assign a fee structure to a student to create an invoice.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form
+            onSubmit={handleCreateInvoice}
+            className="grid grid-cols-1 gap-4 md:grid-cols-3"
           >
-            <option value="">Select Student...</option>
-            {students.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.firstName} {s.lastName}
-              </option>
-            ))}
-          </select>
-          <select
-            value={invFeeStructure}
-            onChange={(e) => setInvFeeStructure(e.target.value)}
-            className="rounded-md border-gray-300"
-            required
-          >
-            <option value="">Select Fee Structure...</option>
-            {feeStructures.map((fs) => (
-              <option key={fs.id} value={fs.id}>
-                {fs.name} (GHS {fs.amount})
-              </option>
-            ))}
-          </select>
-          <input
-            type="date"
-            value={invDueDate}
-            onChange={(e) => setInvDueDate(e.target.value)}
-            className="rounded-md border-gray-300"
-            required
-          />
-          <div className="md:col-span-3">
-            <button
-              type="submit"
-              className="rounded-md bg-green-600 px-4 py-2 font-semibold text-white hover:bg-green-700"
-            >
-              Generate Invoice
-            </button>
-          </div>
-        </form>
-      </div>
-      {message && (
-        <p className="mt-4 text-sm font-medium text-center">{message}</p>
-      )}
+            <div className="space-y-2">
+              <Label htmlFor="inv-student">Student</Label>
+              <Select onValueChange={setInvStudent} value={invStudent}>
+                <SelectTrigger id="inv-student">
+                  <SelectValue placeholder="Select Student..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {students.map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.firstName} {s.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inv-fs">Fee Structure</Label>
+              <Select
+                onValueChange={setInvFeeStructure}
+                value={invFeeStructure}
+              >
+                <SelectTrigger id="inv-fs">
+                  <SelectValue placeholder="Select Fee..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {feeStructures.map((fs) => (
+                    <SelectItem key={fs.id} value={fs.id}>
+                      {fs.name} (GHS {fs.amount})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="inv-due">Due Date</Label>
+              <Input
+                id="inv-due"
+                type="date"
+                value={invDueDate}
+                onChange={(e) => setInvDueDate(e.target.value)}
+                required
+              />
+            </div>
+            <div className="md:col-span-3">
+              <Button type="submit">Generate Invoice</Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 }
