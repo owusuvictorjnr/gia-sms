@@ -5,8 +5,8 @@ import { Class } from "./class.entity";
 import { CreateClassDto } from "./dto/create-class.dto";
 import { User, UserRole } from "../user/user.entity";
 
-
 // The ClassService is responsible for managing class-related operations such as creating classes, assigning users to classes, and fetching class rosters for teachers.
+
 @Injectable()
 export class ClassService {
   constructor(
@@ -37,36 +37,44 @@ export class ClassService {
       throw new NotFoundException("User or Class not found.");
     }
 
-    user.classId = classToAssign.id; // Explicitly set the foreign key
+    user.classId = classToAssign.id;
     const savedUser = await this.usersRepository.save(user);
     const { password, ...result } = savedUser;
     return result as User;
   }
 
+  // New method to get the teacher's assigned class
+  async findClassByTeacher(teacherPayload: { userId: string }): Promise<Class> {
+    const teacher = await this.usersRepository.findOne({
+      where: { id: teacherPayload.userId },
+      relations: ["class"], // Load the related class
+    });
+
+    if (!teacher || !teacher.class) {
+      throw new NotFoundException("Teacher is not assigned to a class.");
+    }
+    return teacher.class;
+  }
+
   async findStudentsByTeacher(teacherPayload: {
     userId: string;
   }): Promise<User[]> {
-    // 1. Fetch the teacher to get their classId
     const teacher = await this.usersRepository.findOneBy({
       id: teacherPayload.userId,
     });
 
-    // 2. Check if the teacher exists and is assigned to a class
     if (!teacher || !teacher.classId) {
       return [];
     }
 
-    // 3. Find all users who are students and are in the same class
     const students = await this.usersRepository.find({
       where: {
-        classId: teacher.classId, // Use the direct foreign key for the query
+        classId: teacher.classId,
         role: UserRole.STUDENT,
       },
       order: { lastName: "ASC" },
     });
 
-    // 4. Return the students without their sensitive password data
     return students.map(({ password, ...rest }) => rest as User);
   }
 }
- 
