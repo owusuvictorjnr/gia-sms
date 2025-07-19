@@ -4,7 +4,9 @@ import {
   Column,
   ManyToMany,
   JoinTable,
+  ManyToOne,
 } from "typeorm";
+import { Class } from "../class/class.entity"; // Import the Class entity
 
 export enum UserRole {
   ADMIN = "admin",
@@ -43,18 +45,21 @@ export class User {
 
   // --- Relationships ---
 
-  // For a parent, this will list their children.
-  // For a student, this will be empty.
   @ManyToMany(() => User, (user) => user.parents)
   @JoinTable({
-    name: "parent_child", // The name of the intermediate table
+    name: "parent_child",
     joinColumn: { name: "parentId", referencedColumnName: "id" },
     inverseJoinColumn: { name: "childId", referencedColumnName: "id" },
   })
   children: User[];
 
-  // For a student, this will list their parents.
-  // For a parent, this will be empty.
   @ManyToMany(() => User, (user) => user.children)
   parents: User[];
+
+  // A user (student or teacher) can belong to one class
+  @ManyToOne(() => Class, (cls) => cls.users, { nullable: true })
+  class: Class;
+
+  @Column({ nullable: true }) // Re-adding the explicit foreign key column
+  classId: string;
 }
