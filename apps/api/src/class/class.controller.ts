@@ -15,8 +15,8 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { User, UserRole } from "../user/user.entity";
 import { GetUser } from "src/auth/get-user.decorator";
 
-
 // This controller handles class-related operations such as creating classes, assigning users to classes, and fetching class rosters for teachers.
+
 @Controller("classes")
 @UseGuards(JwtAuthGuard)
 export class ClassController {
@@ -44,6 +44,13 @@ export class ClassController {
       assignUserDto.userId,
       assignUserDto.classId
     );
+  }
+
+  @Get("my-class") // New endpoint to get the teacher's class
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TEACHER)
+  getMyClass(@GetUser() teacherPayload: { userId: string }) {
+    return this.classService.findClassByTeacher(teacherPayload);
   }
 
   @Get("my-roster")
