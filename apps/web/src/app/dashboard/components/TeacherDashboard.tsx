@@ -1,22 +1,68 @@
-import React from "react";
+"use client";
 
-// Define the props that this component accepts
+import React, { useState, useEffect } from "react";
+
+// Define the shape of the student data
+interface Student {
+  id: string;
+  firstName: string;
+  lastName: string;
+  middleName?: string;
+}
+
 interface TeacherDashboardProps {
   setView: (view: string) => void;
 }
 
+// Helper function to get the auth token
+const getAuthToken = (): string | null => {
+  if (typeof window !== "undefined") {
+    return localStorage.getItem("access_token");
+  }
+  return null;
+};
+
 export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
-  // In a real app, this data would come from API calls.
+  const [roster, setRoster] = useState<Student[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    const fetchRoster = async () => {
+      const token = getAuthToken();
+      if (!token) {
+        setError("Authentication error.");
+        setIsLoading(false);
+        return;
+      }
+      try {
+        const response = await fetch(
+          "http://localhost:3001/classes/my-roster",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        if (!response.ok)
+          throw new Error(
+            "Failed to fetch class roster. Please ensure you are assigned to a class."
+          );
+
+        const data = await response.json();
+        setRoster(data);
+      } catch (err: any) {
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRoster();
+  }, []);
+
+  // Mock data for the schedule
   const schedule = [
     { time: "8:30 AM", subject: "Mathematics", class: "Grade 5" },
     { time: "9:30 AM", subject: "English", class: "Grade 5" },
     { time: "11:00 AM", subject: "Science", class: "Grade 5" },
-  ];
-
-  const students = [
-    { name: "Kofi Mensah" },
-    { name: "Adwoa Akoto" },
-    { name: "Yaw Boateng" },
   ];
 
   return (
@@ -39,7 +85,7 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
                 Quickly mark today's attendance for your class.
               </p>
               <button
-                onClick={() => setView("roll-call")} // Use the setView prop here
+                onClick={() => setView("roll-call")}
                 className="mt-4 rounded-md bg-white px-4 py-2 font-semibold text-indigo-600"
               >
                 Go to Roll Call
@@ -51,7 +97,7 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
                 Input recent test scores or assignment grades.
               </p>
               <button
-                onClick={() => setView("gradebook")} // Use the setView prop here
+                onClick={() => setView("gradebook")}
                 className="mt-4 rounded-md bg-white px-4 py-2 font-semibold text-green-600"
               >
                 Open Gradebook
@@ -85,19 +131,30 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
 
         {/* Class Roster */}
         <div className="rounded-lg bg-white p-6 shadow lg:col-span-1">
-          <h3 className="text-lg font-semibold text-gray-700">
-            Class Roster (Grade 5)
-          </h3>
-          <ul className="mt-2 space-y-2">
-            {students.map((student) => (
-              <li
-                key={student.name}
-                className="rounded-md p-2 hover:bg-gray-50"
-              >
-                {student.name}
-              </li>
-            ))}
-          </ul>
+          <h3 className="text-lg font-semibold text-gray-700">Class Roster</h3>
+          {isLoading ? (
+            <p className="mt-2 text-sm text-gray-500">Loading roster...</p>
+          ) : error ? (
+            <p className="mt-2 text-sm text-red-500">{error}</p>
+          ) : roster.length > 0 ? (
+            <ul className="mt-2 space-y-2">
+              {roster.map((student) => (
+                <li
+                  key={student.id}
+                  className="rounded-md p-2 hover:bg-gray-50"
+                >
+                  {[student.firstName, student.middleName, student.lastName]
+                    .filter(Boolean)
+                    .join(" ")}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-2 text-sm text-gray-500">
+              No students are currently assigned to your class. Please contact
+              an administrator.
+            </p>
+          )}
         </div>
       </div>
     </div>
