@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 
-// Define the shape of the student data
+// Define the shape of the data
 interface Student {
   id: string;
   firstName: string;
@@ -10,8 +10,20 @@ interface Student {
   middleName?: string;
 }
 
+interface ClassDetails {
+  id: string;
+  name: string;
+  academicYear: string;
+}
+
+interface UserProfile {
+  firstName?: string;
+  lastName?: string;
+}
+
 interface TeacherDashboardProps {
   setView: (view: string) => void;
+  profile: UserProfile; // Accept the profile as a prop
 }
 
 // Helper function to get the auth token
@@ -22,13 +34,17 @@ const getAuthToken = (): string | null => {
   return null;
 };
 
-export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
+export default function TeacherDashboard({
+  setView,
+  profile,
+}: TeacherDashboardProps) {
   const [roster, setRoster] = useState<Student[]>([]);
+  const [classDetails, setClassDetails] = useState<ClassDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchRoster = async () => {
+    const fetchData = async () => {
       const token = getAuthToken();
       if (!token) {
         setError("Authentication error.");
@@ -36,33 +52,40 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
         return;
       }
       try {
-        const response = await fetch(
-          "http://localhost:3001/classes/my-roster",
-          {
+        // Fetch roster and class details in parallel
+        const [rosterRes, classRes] = await Promise.all([
+          fetch("http://localhost:3001/classes/my-roster", {
             headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!response.ok)
+          }),
+          fetch("http://localhost:3001/classes/my-class", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+        ]);
+
+        if (!rosterRes.ok || !classRes.ok)
           throw new Error(
-            "Failed to fetch class roster. Please ensure you are assigned to a class."
+            "Failed to fetch class data. Please ensure you are assigned to a class."
           );
 
-        const data = await response.json();
-        setRoster(data);
+        const rosterData = await rosterRes.json();
+        const classData = await classRes.json();
+
+        setRoster(rosterData);
+        setClassDetails(classData);
       } catch (err: any) {
         setError(err.message);
       } finally {
         setIsLoading(false);
       }
     };
-    fetchRoster();
+    fetchData();
   }, []);
 
   // Mock data for the schedule
   const schedule = [
-    { time: "8:30 AM", subject: "Mathematics", class: "Grade 5" },
-    { time: "9:30 AM", subject: "English", class: "Grade 5" },
-    { time: "11:00 AM", subject: "Science", class: "Grade 5" },
+    { time: "8:30 AM", subject: "Mathematics" },
+    { time: "9:30 AM", subject: "English" },
+    { time: "11:00 AM", subject: "Science" },
   ];
 
   return (
@@ -70,7 +93,8 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
       <div>
         <h2 className="text-2xl font-bold text-gray-800">Teacher Dashboard</h2>
         <p className="mt-1 text-gray-600">
-          Welcome! Here are your tools and schedule for today.
+          Welcome, {profile.firstName}! Here are your tools and schedule for
+          today.
         </p>
       </div>
 
@@ -108,7 +132,7 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
           {/* Today's Schedule */}
           <div className="rounded-lg bg-white p-6 shadow">
             <h3 className="text-lg font-semibold text-gray-700">
-              Today's Schedule
+              Today's Schedule {classDetails && `- ${classDetails.name}`}
             </h3>
             <ul className="mt-2 space-y-2">
               {schedule.map((item) => (
@@ -118,7 +142,6 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
                 >
                   <div>
                     <p className="font-medium">{item.subject}</p>
-                    <p className="text-sm text-gray-500">{item.class}</p>
                   </div>
                   <span className="font-mono text-sm text-gray-600">
                     {item.time}
@@ -131,7 +154,9 @@ export default function TeacherDashboard({ setView }: TeacherDashboardProps) {
 
         {/* Class Roster */}
         <div className="rounded-lg bg-white p-6 shadow lg:col-span-1">
-          <h3 className="text-lg font-semibold text-gray-700">Class Roster</h3>
+          <h3 className="text-lg font-semibold text-gray-700">
+            Class Roster {classDetails && `(${classDetails.name})`}
+          </h3>
           {isLoading ? (
             <p className="mt-2 text-sm text-gray-500">Loading roster...</p>
           ) : error ? (
