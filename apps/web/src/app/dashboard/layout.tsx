@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
 import ParentDashboard from "./components/ParentDashboard";
-import AccountantDashboard from "./components/AccountantDashboard"; // Import new component
 import RollCallPage from "./components/RollCallPage";
 import GradebookPage from "./components/GradebookPage";
 import ApprovalsPage from "./components/ApprovalsPage";
@@ -15,6 +14,7 @@ import FinancePage from "./components/FinancePage";
 import TransactionsPage from "./components/TransactionsPage";
 import AnnouncementsPage from "./components/AnnouncementsPage";
 import UserManagementPage from "./components/UserManagementPage";
+import ClassManagementPage from "./components/ClassManagementPage"; // Import the new page
 
 interface UserProfile {
   userId: string;
@@ -69,8 +69,6 @@ export default function DashboardLayout() {
             return <TeacherDashboard setView={setActiveView} />;
           case "parent":
             return <ParentDashboard />;
-          case "accountant":
-            return <AccountantDashboard setView={setActiveView} />; // Add case for accountant
           default:
             return <p>No dashboard for your role.</p>;
         }
@@ -92,6 +90,8 @@ export default function DashboardLayout() {
         return <AnnouncementsPage />;
       case "user-management":
         return <UserManagementPage />;
+      case "class-management":
+        return <ClassManagementPage />; // Add case for the new page
       default:
         return <p>Page not found.</p>;
     }
@@ -153,28 +153,15 @@ export default function DashboardLayout() {
               </a>
             </>
           )}
-
-          {profile?.role === "accountant" && (
+          {(profile?.role === "admin" || profile?.role === "accountant") && (
             <>
               <a
                 href="#"
-                onClick={() => setActiveView("finance")}
-                className={`block px-6 py-3 ${activeView === "finance" ? "bg-gray-900" : ""}`}
+                onClick={() => setActiveView("class-management")}
+                className={`block px-6 py-3 ${activeView === "class-management" ? "bg-gray-900" : ""}`}
               >
-                Finance
+                Class Management
               </a>
-              <a
-                href="#"
-                onClick={() => setActiveView("transactions")}
-                className={`block px-6 py-3 ${activeView === "transactions" ? "bg-gray-900" : ""}`}
-              >
-                Transactions
-              </a>
-            </>
-          )}
-
-          {profile?.role === "admin" && (
-            <>
               <a
                 href="#"
                 onClick={() => setActiveView("user-management")}
