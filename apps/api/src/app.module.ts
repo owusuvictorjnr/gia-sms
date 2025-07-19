@@ -17,6 +17,8 @@ import { Invoice } from "./finance/invoice.entity";
 import { FeeStructure } from "./finance/feestructure.entity";
 import { TransactionModule } from "./transaction/transaction.module";
 import { Transaction } from "./transaction/transaction.entity";
+import { ClassModule } from "./class/class.module";
+import { Class } from "./class/class.entity";
 
 @Module({
   imports: [
@@ -42,6 +44,7 @@ import { Transaction } from "./transaction/transaction.entity";
           FeeStructure,
           Invoice,
           Transaction,
+          Class, // Added Class entity
         ],
         synchronize: true,
       }),
@@ -55,6 +58,7 @@ import { Transaction } from "./transaction/transaction.entity";
     AnnouncementModule, // Added AnnouncementModule
     FinanceModule, // Added FinanceModule
     TransactionModule, // Added TransactionModule
+    ClassModule, // Added ClassModule
   ],
   controllers: [],
   providers: [],
