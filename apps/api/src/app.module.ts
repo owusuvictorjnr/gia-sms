@@ -19,6 +19,8 @@ import { TransactionModule } from "./transaction/transaction.module";
 import { Transaction } from "./transaction/transaction.entity";
 import { ClassModule } from "./class/class.module";
 import { Class } from "./class/class.entity";
+import { TimetableModule } from "./timetable/timetable.module";
+import { TimetableEntry } from "./timetable/timetable.entity";
 
 @Module({
   imports: [
@@ -45,6 +47,7 @@ import { Class } from "./class/class.entity";
           Invoice,
           Transaction,
           Class, // Added Class entity
+          TimetableEntry, // Added TimetableEntry entity
         ],
         synchronize: true,
       }),
@@ -59,6 +62,7 @@ import { Class } from "./class/class.entity";
     FinanceModule, // Added FinanceModule
     TransactionModule, // Added TransactionModule
     ClassModule, // Added ClassModule
+    TimetableModule, // Imported TimetableModule here
   ],
   controllers: [],
   providers: [],
