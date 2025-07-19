@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import AdminDashboard from "./components/AdminDashboard";
 import TeacherDashboard from "./components/TeacherDashboard";
 import ParentDashboard from "./components/ParentDashboard";
+import AccountantDashboard from "./components/AccountantDashboard";
 import RollCallPage from "./components/RollCallPage";
 import GradebookPage from "./components/GradebookPage";
 import ApprovalsPage from "./components/ApprovalsPage";
@@ -14,12 +15,16 @@ import FinancePage from "./components/FinancePage";
 import TransactionsPage from "./components/TransactionsPage";
 import AnnouncementsPage from "./components/AnnouncementsPage";
 import UserManagementPage from "./components/UserManagementPage";
-import ClassManagementPage from "./components/ClassManagementPage"; // Import the new page
+import ClassManagementPage from "./components/ClassManagementPage";
+import TimetablePage from "./components/TimetablePage"; // Import the new page
 
 interface UserProfile {
   userId: string;
   email: string;
   role: string;
+  firstName?: string;
+  middleName?: string;
+  lastName?: string;
 }
 
 export default function DashboardLayout() {
@@ -59,16 +64,20 @@ export default function DashboardLayout() {
   };
 
   const renderActiveView = () => {
+    if (!profile) return null;
     switch (activeView) {
       case "dashboard":
-        if (!profile) return null;
         switch (profile.role) {
           case "admin":
             return <AdminDashboard setView={setActiveView} />;
           case "teacher":
-            return <TeacherDashboard setView={setActiveView} />;
+            return (
+              <TeacherDashboard setView={setActiveView} profile={profile} />
+            );
           case "parent":
             return <ParentDashboard />;
+          case "accountant":
+            return <AccountantDashboard setView={setActiveView} />;
           default:
             return <p>No dashboard for your role.</p>;
         }
@@ -91,7 +100,9 @@ export default function DashboardLayout() {
       case "user-management":
         return <UserManagementPage />;
       case "class-management":
-        return <ClassManagementPage />; // Add case for the new page
+        return <ClassManagementPage />;
+      case "timetable":
+        return <TimetablePage />; // Add case for the new page
       default:
         return <p>Page not found.</p>;
     }
@@ -126,6 +137,13 @@ export default function DashboardLayout() {
             className={`block px-6 py-3 ${activeView === "announcements" ? "bg-gray-900" : ""}`}
           >
             Announcements
+          </a>
+          <a
+            href="#"
+            onClick={() => setActiveView("timetable")}
+            className={`block px-6 py-3 ${activeView === "timetable" ? "bg-gray-900" : ""}`}
+          >
+            Timetable
           </a>
 
           {profile?.role === "teacher" && (
