@@ -1,4 +1,18 @@
+"use client";
+
 import { useState, FormEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useToast } from "@/hooks/use-toast";
 
 // Helper function to get the auth token
 const getAuthToken = (): string | null => {
@@ -7,7 +21,6 @@ const getAuthToken = (): string | null => {
   }
   return null;
 };
-
 
 // Main component for creating a new announcement
 // This component allows teachers to create announcements that will be submitted for admin approval
@@ -19,18 +32,21 @@ const getAuthToken = (): string | null => {
 export default function CreateAnnouncementPage() {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
-  const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const token = getAuthToken();
     if (!title || !content || !token) {
-      setMessage("Please fill out all fields.");
+      toast({
+        title: "Error",
+        description: "Please fill out all fields.",
+        variant: "destructive",
+      });
       return;
     }
     setIsLoading(true);
-    setMessage("");
 
     try {
       const response = await fetch("http://localhost:3001/announcements", {
@@ -46,68 +62,62 @@ export default function CreateAnnouncementPage() {
         throw new Error("Failed to submit announcement.");
       }
 
-      setMessage("Announcement submitted successfully for approval!");
+      toast({
+        title: "Success",
+        description: "Announcement submitted successfully for approval!",
+      });
       // Reset form
       setTitle("");
       setContent("");
     } catch (err: any) {
-      setMessage(err.message);
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h2 className="mb-4 border-b pb-4 text-2xl font-bold text-gray-800">
-        Create New Announcement
-      </h2>
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label
-            htmlFor="title"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Title
-          </label>
-          <input
-            type="text"
-            id="title"
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="e.g., Upcoming P.T.A. Meeting"
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <label
-            htmlFor="content"
-            className="block text-sm font-medium text-gray-700"
-          >
-            Content
-          </label>
-          <textarea
-            id="content"
-            rows={6}
-            value={content}
-            onChange={(e) => setContent(e.target.value)}
-            placeholder="Enter the full details of the announcement here..."
-            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-          />
-        </div>
-        <div>
-          <button
-            type="submit"
-            disabled={isLoading}
-            className="w-full rounded-md bg-indigo-600 py-2 font-semibold text-white hover:bg-indigo-700 disabled:bg-gray-400 sm:w-auto sm:px-8"
-          >
-            {isLoading ? "Submitting..." : "Submit for Approval"}
-          </button>
-        </div>
-        {message && (
-          <p className="mt-4 text-sm font-medium text-gray-700">{message}</p>
-        )}
-      </form>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Create New Announcement</CardTitle>
+        <CardDescription>
+          Compose a new announcement to be sent for administrative approval.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="title">Title</Label>
+            <Input
+              id="title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g., Upcoming P.T.A. Meeting"
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="content">Content</Label>
+            <Textarea
+              id="content"
+              rows={8}
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Enter the full details of the announcement here..."
+              required
+            />
+          </div>
+          <div>
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Submitting..." : "Submit for Approval"}
+            </Button>
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   );
 }
