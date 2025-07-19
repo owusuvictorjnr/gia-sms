@@ -1,4 +1,22 @@
+"use client";
+
 import { useState, useEffect } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge"; // We'll use the Badge component for status
 
 // Define data shapes
 interface Invoice {
@@ -54,16 +72,18 @@ export default function TransactionsPage() {
     fetchInvoices();
   }, []);
 
-  const getStatusClass = (status: string) => {
+  const getStatusVariant = (
+    status: string
+  ): "default" | "destructive" | "secondary" => {
     switch (status) {
       case "paid":
-        return "bg-green-100 text-green-800";
+        return "default"; // Green for paid
       case "unpaid":
-        return "bg-yellow-100 text-yellow-800";
+        return "destructive"; // Red for unpaid
       case "overdue":
-        return "bg-red-100 text-red-800";
+        return "destructive"; // Red for overdue
       default:
-        return "bg-gray-100 text-gray-800";
+        return "secondary";
     }
   };
 
@@ -71,47 +91,50 @@ export default function TransactionsPage() {
   if (error) return <div className="text-red-500">Error: {error}</div>;
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <h2 className="mb-4 border-b pb-4 text-2xl font-bold text-gray-800">
-        All Invoices / Transactions
-      </h2>
-      <div className="overflow-x-auto">
-        <table className="min-w-full text-left text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="p-4 font-semibold">Student</th>
-              <th className="p-4 font-semibold">Invoice For</th>
-              <th className="p-4 font-semibold">Amount (GHS)</th>
-              <th className="p-4 font-semibold">Due Date</th>
-              <th className="p-4 font-semibold">Status</th>
-            </tr>
-          </thead>
-          <tbody>
+    <Card>
+      <CardHeader>
+        <CardTitle>All Invoices / Transactions</CardTitle>
+        <CardDescription>
+          A complete log of all invoices generated in the system.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Student</TableHead>
+              <TableHead>Invoice For</TableHead>
+              <TableHead>Amount (GHS)</TableHead>
+              <TableHead>Due Date</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {invoices.map((invoice) => (
-              <tr key={invoice.id} className="border-b hover:bg-gray-50">
-                <td className="p-4">
+              <TableRow key={invoice.id}>
+                <TableCell className="font-medium">
                   {invoice.student.firstName} {invoice.student.lastName}
-                </td>
-                <td className="p-4">{invoice.feeStructure.name}</td>
-                <td className="p-4 font-medium">
-                  {/* FIX: Convert the string to a number before calling toFixed */}
+                </TableCell>
+                <TableCell>{invoice.feeStructure.name}</TableCell>
+                <TableCell>
                   {parseFloat(invoice.feeStructure.amount).toFixed(2)}
-                </td>
-                <td className="p-4">
+                </TableCell>
+                <TableCell>
                   {new Date(invoice.dueDate).toLocaleDateString()}
-                </td>
-                <td className="p-4">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold capitalize ${getStatusClass(invoice.status)}`}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={getStatusVariant(invoice.status)}
+                    className="capitalize"
                   >
                     {invoice.status}
-                  </span>
-                </td>
-              </tr>
+                  </Badge>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
