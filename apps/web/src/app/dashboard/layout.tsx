@@ -16,7 +16,11 @@ import TransactionsPage from "./components/TransactionsPage";
 import AnnouncementsPage from "./components/AnnouncementsPage";
 import UserManagementPage from "./components/UserManagementPage";
 import ClassManagementPage from "./components/ClassManagementPage";
-import TimetablePage from "./components/TimetablePage"; // Import the new page
+import TimetablePage from "./components/TimetablePage";
+import TimetableManagementPage from "./components/TimetableManagementPage";
+import CalendarPage from "./components/CalendarPage";
+import CalendarManagementPage from "./components/CalendarManagementPage";
+import MessagingPage from "./components/MessagingPage"; // Import the new page
 
 interface UserProfile {
   userId: string;
@@ -102,7 +106,17 @@ export default function DashboardLayout() {
       case "class-management":
         return <ClassManagementPage />;
       case "timetable":
-        return <TimetablePage />; // Add case for the new page
+        if (profile.role === "admin" || profile.role === "accountant") {
+          return <TimetableManagementPage />;
+        }
+        return <TimetablePage />;
+      case "calendar":
+        if (profile.role === "admin") {
+          return <CalendarManagementPage />;
+        }
+        return <CalendarPage />;
+      case "messaging":
+        return <MessagingPage profile={profile} />; // Add case for the new page
       default:
         return <p>Page not found.</p>;
     }
@@ -133,6 +147,13 @@ export default function DashboardLayout() {
           </a>
           <a
             href="#"
+            onClick={() => setActiveView("messaging")}
+            className={`block px-6 py-3 ${activeView === "messaging" ? "bg-gray-900" : ""}`}
+          >
+            Messages
+          </a>
+          <a
+            href="#"
             onClick={() => setActiveView("announcements")}
             className={`block px-6 py-3 ${activeView === "announcements" ? "bg-gray-900" : ""}`}
           >
@@ -144,6 +165,13 @@ export default function DashboardLayout() {
             className={`block px-6 py-3 ${activeView === "timetable" ? "bg-gray-900" : ""}`}
           >
             Timetable
+          </a>
+          <a
+            href="#"
+            onClick={() => setActiveView("calendar")}
+            className={`block px-6 py-3 ${activeView === "calendar" ? "bg-gray-900" : ""}`}
+          >
+            Calendar
           </a>
 
           {profile?.role === "teacher" && (
@@ -171,7 +199,7 @@ export default function DashboardLayout() {
               </a>
             </>
           )}
-          {(profile?.role === "admin" || profile?.role === "accountant") && (
+          {profile?.role === "admin" && (
             <>
               <a
                 href="#"
@@ -214,6 +242,24 @@ export default function DashboardLayout() {
                 className={`block px-6 py-3 ${activeView === "approvals" ? "bg-gray-900" : ""}`}
               >
                 Approvals
+              </a>
+            </>
+          )}
+          {profile?.role === "accountant" && (
+            <>
+              <a
+                href="#"
+                onClick={() => setActiveView("finance")}
+                className={`block px-6 py-3 ${activeView === "finance" ? "bg-gray-900" : ""}`}
+              >
+                Finance
+              </a>
+              <a
+                href="#"
+                onClick={() => setActiveView("transactions")}
+                className={`block px-6 py-3 ${activeView === "transactions" ? "bg-gray-900" : ""}`}
+              >
+                Transactions
               </a>
             </>
           )}
