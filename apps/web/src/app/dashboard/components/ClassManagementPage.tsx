@@ -22,15 +22,14 @@ interface Class {
 interface UserSearchResult {
   id: string;
   firstName: string;
+  middleName: string;
   lastName: string;
   email: string;
 }
 
-// Helper function to get the auth token
 const getAuthToken = (): string | null => {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined")
     return localStorage.getItem("access_token");
-  }
   return null;
 };
 
@@ -54,11 +53,7 @@ export default function ClassManagementPage() {
 
   const fetchClasses = async () => {
     const token = getAuthToken();
-    if (!token) {
-      setError("Authentication error.");
-      setIsLoading(false);
-      return;
-    }
+    if (!token) return;
     try {
       const response = await fetch("http://localhost:3001/classes", {
         headers: { Authorization: `Bearer ${token}` },
@@ -68,14 +63,12 @@ export default function ClassManagementPage() {
       setClasses(data);
     } catch (err: any) {
       setError(err.message);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  // Fetch initial data (classes)
   useEffect(() => {
-    fetchClasses();
+    setIsLoading(true);
+    fetchClasses().finally(() => setIsLoading(false));
   }, []);
 
   const handleCreateClass = async (e: FormEvent) => {
@@ -92,8 +85,7 @@ export default function ClassManagementPage() {
       });
       if (!response.ok) throw new Error("Failed to create class.");
 
-      // Refresh the class list to show the new one
-      fetchClasses();
+      fetchClasses(); // Re-fetch classes to update the list
 
       toast({ title: "Success", description: "Class created successfully!" });
       setClassName("");
@@ -156,7 +148,7 @@ export default function ClassManagementPage() {
             Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
-            classId: selectedClass.id,
+            classId: selectedClass.id, 
             userId: selectedUser.id,
           }),
         }
