@@ -1,10 +1,10 @@
 import { Module } from "@nestjs/common";
 import { TypeOrmModule } from "@nestjs/typeorm";
-import { ConfigModule, ConfigService } from "@nestjs/config";
 import { UserModule } from "./user/user.module";
+import { User } from "./user/user.entity";
+import { ConfigModule, ConfigService } from "@nestjs/config";
 import { AuthModule } from "./auth/auth.module";
 import { GradeModule } from "./grade/grade.module";
-import { User } from "./user/user.entity";
 import { Grade } from "./grade/grade.entity";
 import { AttendanceModule } from "./attendance/attendance.module";
 import { Attendance } from "./attendance/attendance.entity";
@@ -13,14 +13,19 @@ import { AdminModule } from "./admin/admin.module";
 import { AnnouncementModule } from "./announcement/announcement.module";
 import { Announcement } from "./announcement/announcement.entity";
 import { FinanceModule } from "./finance/finance.module";
-import { Invoice } from "./finance/invoice.entity";
 import { FeeStructure } from "./finance/feestructure.entity";
+import { Invoice } from "./finance/invoice.entity";
 import { TransactionModule } from "./transaction/transaction.module";
 import { Transaction } from "./transaction/transaction.entity";
 import { ClassModule } from "./class/class.module";
 import { Class } from "./class/class.entity";
 import { TimetableModule } from "./timetable/timetable.module";
 import { TimetableEntry } from "./timetable/timetable.entity";
+import { CalendarModule } from "./calendar/calendar.module";
+import { CalendarEvent } from "./calendar/calendar.entity";
+import { MessagingModule } from "./messaging/messaging.module";
+import { Conversation } from "./messaging/conversation.entity";
+import { Message } from "./messaging/message.entity";
 
 @Module({
   imports: [
@@ -46,23 +51,28 @@ import { TimetableEntry } from "./timetable/timetable.entity";
           FeeStructure,
           Invoice,
           Transaction,
-          Class, // Added Class entity
-          TimetableEntry, // Added TimetableEntry entity
-        ],
+          Class,
+          TimetableEntry,
+          CalendarEvent,
+          Conversation,
+          Message,
+        ], // Added messaging entities here
         synchronize: true,
       }),
     }),
-    UserModule, // Added UserModule
-    AuthModule, // Added AuthModule
-    GradeModule, // Added GradeModule
-    AttendanceModule, // Added AttendanceModule
-    ParentModule, // Added ParentModule
-    AdminModule, // Added AdminModule
-    AnnouncementModule, // Added AnnouncementModule
-    FinanceModule, // Added FinanceModule
-    TransactionModule, // Added TransactionModule
-    ClassModule, // Added ClassModule
-    TimetableModule, // Imported TimetableModule here
+    UserModule,
+    AuthModule,
+    GradeModule,
+    AttendanceModule,
+    ParentModule,
+    AdminModule,
+    AnnouncementModule,
+    FinanceModule,
+    TransactionModule,
+    ClassModule,
+    TimetableModule,
+    CalendarModule,
+    MessagingModule, // Imported MessagingModule here
   ],
   controllers: [],
   providers: [],
