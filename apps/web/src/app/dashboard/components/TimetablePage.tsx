@@ -13,7 +13,7 @@ import { Badge } from "@/components/ui/badge";
 // Define data shapes
 interface TimetableEntry {
   id: string;
-  dayOfWeek: "monday" | "tuesday" | "wednesday" | "thursday" | "friday";
+  dayOfWeek: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday";
   startTime: string;
   endTime: string;
   subject: string;
