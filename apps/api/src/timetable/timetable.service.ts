@@ -4,7 +4,10 @@ import { Repository } from "typeorm";
 import { TimetableEntry } from "./timetable.entity";
 import { CreateTimetableEntryDto } from "./dto/create-timetable-entry.dto";
 
-
+/**
+ * TimetableService is responsible for managing timetable entries.
+ * It provides methods to create and retrieve timetable entries for specific classes.
+ */
 // The TimetableService is responsible for managing timetable entries, including creating and retrieving them for specific classes.
 @Injectable()
 export class TimetableService {
