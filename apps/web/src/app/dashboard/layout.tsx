@@ -17,17 +17,17 @@ import AnnouncementsPage from "./components/AnnouncementsPage";
 import UserManagementPage from "./components/UserManagementPage";
 import ClassManagementPage from "./components/ClassManagementPage";
 import TimetablePage from "./components/TimetablePage";
-import TimetableManagementPage from "./components/TimetableManagementPage";
+import TimetableManagementPage from "./components/TimetableManagementPage"; // Import the new admin page
 import CalendarPage from "./components/CalendarPage";
 import CalendarManagementPage from "./components/CalendarManagementPage";
-import MessagingPage from "./components/MessagingPage"; // Import the new page
+import HealthRecordPage from "./components/HealthRecordPage";
+import { Toaster } from "@/components/ui/toaster";
 
 interface UserProfile {
   userId: string;
   email: string;
   role: string;
   firstName?: string;
-  middleName?: string;
   lastName?: string;
 }
 
@@ -106,6 +106,7 @@ export default function DashboardLayout() {
       case "class-management":
         return <ClassManagementPage />;
       case "timetable":
+        // Show the correct timetable page based on the user's role
         if (profile.role === "admin" || profile.role === "accountant") {
           return <TimetableManagementPage />;
         }
@@ -115,8 +116,8 @@ export default function DashboardLayout() {
           return <CalendarManagementPage />;
         }
         return <CalendarPage />;
-      case "messaging":
-        return <MessagingPage profile={profile} />; // Add case for the new page
+      case "health-records":
+        return <HealthRecordPage />;
       default:
         return <p>Page not found.</p>;
     }
@@ -144,13 +145,6 @@ export default function DashboardLayout() {
             className={`block px-6 py-3 ${activeView === "dashboard" ? "bg-gray-900" : ""}`}
           >
             Dashboard
-          </a>
-          <a
-            href="#"
-            onClick={() => setActiveView("messaging")}
-            className={`block px-6 py-3 ${activeView === "messaging" ? "bg-gray-900" : ""}`}
-          >
-            Messages
           </a>
           <a
             href="#"
@@ -201,6 +195,13 @@ export default function DashboardLayout() {
           )}
           {profile?.role === "admin" && (
             <>
+              <a
+                href="#"
+                onClick={() => setActiveView("health-records")}
+                className={`block px-6 py-3 ${activeView === "health-records" ? "bg-gray-900" : ""}`}
+              >
+                Health Records
+              </a>
               <a
                 href="#"
                 onClick={() => setActiveView("class-management")}
@@ -277,6 +278,7 @@ export default function DashboardLayout() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-y-auto p-8">{renderActiveView()}</main>
+      <Toaster />
     </div>
   );
 }
