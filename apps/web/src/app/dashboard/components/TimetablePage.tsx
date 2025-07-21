@@ -8,12 +8,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 
 // Define data shapes
 interface TimetableEntry {
   id: string;
-  dayOfWeek: "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday";
+  dayOfWeek: "monday" | "tuesday" | "wednesday" | "thursday" | "friday";
   startTime: string;
   endTime: string;
   subject: string;
@@ -99,7 +98,7 @@ export default function TimetablePage() {
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
   if (isLoading) return <div>Loading timetable...</div>;
-  if (error) return <div className="text-red-500">Error: {error}</div>;
+  if (error) return <div className="text-red-500">{error}</div>;
 
   return (
     <Card>
@@ -117,7 +116,7 @@ export default function TimetablePage() {
             <div key={day} className="rounded-lg bg-gray-50 p-4">
               <h3 className="font-bold capitalize text-gray-800">{day}</h3>
               <div className="mt-4 space-y-3">
-                {timetable[day] ? (
+                {timetable[day] && timetable[day].length > 0 ? (
                   timetable[day].map((entry) => (
                     <div
                       key={entry.id}
@@ -130,6 +129,9 @@ export default function TimetablePage() {
                       </p>
                       <p className="mt-1 text-xs text-gray-500">
                         Teacher: {entry.teacher.firstName}{" "}
+                        {entry.teacher.middleName
+                          ? `${entry.teacher.middleName} `
+                          : ""}
                         {entry.teacher.lastName}
                       </p>
                     </div>
