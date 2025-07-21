@@ -69,8 +69,9 @@ const NewConversationModal = ({
     }
     const token = getAuthToken();
     try {
+      // FIX: Call the new, correct search endpoint
       const res = await fetch(
-        `http://localhost:3001/admin/search-users?role=&query=${query}`,
+        `http://localhost:3001/users/search?query=${query}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (!res.ok) throw new Error("Failed to search for users.");
