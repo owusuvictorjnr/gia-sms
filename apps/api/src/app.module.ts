@@ -26,6 +26,8 @@ import { CalendarEvent } from "./calendar/calendar.entity";
 import { MessagingModule } from "./messaging/messaging.module";
 import { Conversation } from "./messaging/conversation.entity";
 import { Message } from "./messaging/message.entity";
+import { HealthModule } from "./health/health.module";
+import { HealthRecord } from "./health/health-record.entity";
 
 @Module({
   imports: [
@@ -56,7 +58,8 @@ import { Message } from "./messaging/message.entity";
           CalendarEvent,
           Conversation,
           Message,
-        ], // Added messaging entities here
+          HealthRecord,
+        ],
         synchronize: true,
       }),
     }),
@@ -73,6 +76,7 @@ import { Message } from "./messaging/message.entity";
     TimetableModule,
     CalendarModule,
     MessagingModule, // Imported MessagingModule here
+    HealthModule, // Imported HealthModule here
   ],
   controllers: [],
   providers: [],
