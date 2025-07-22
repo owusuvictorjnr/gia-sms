@@ -16,16 +16,10 @@ interface TimetableEntry {
   startTime: string;
   endTime: string;
   subject: string;
-  teacher: {
-    firstName: string;
-    middleName?: string;
-    lastName: string;
+  class: {
+    // The class the subject is for
+    name: string;
   };
-}
-
-interface ClassDetails {
-  id: string;
-  name: string;
 }
 
 // Helper function to get the auth token
@@ -40,12 +34,11 @@ export default function TimetablePage() {
   const [timetable, setTimetable] = useState<Record<string, TimetableEntry[]>>(
     {}
   );
-  const [classDetails, setClassDetails] = useState<ClassDetails | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchTimetable = async () => {
+    const fetchTeacherSchedule = async () => {
       const token = getAuthToken();
       if (!token) {
         setError("Authentication error.");
@@ -53,24 +46,19 @@ export default function TimetablePage() {
         return;
       }
       try {
-        // First, get the user's class (assuming they are a teacher or student)
-        // In a real app, a parent would select a child first.
-        const classRes = await fetch("http://localhost:3001/classes/my-class", {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (!classRes.ok)
-          throw new Error("Could not find an assigned class for your profile.");
-        const classData: ClassDetails = await classRes.json();
-        setClassDetails(classData);
-
-        // Then, fetch the timetable for that class
-        const timetableRes = await fetch(
-          `http://localhost:3001/timetables/class/${classData.id}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+        // Call the new endpoint to get only the teacher's schedule
+        const response = await fetch(
+          "http://localhost:3001/timetables/my-schedule",
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         );
-        if (!timetableRes.ok) throw new Error("Failed to fetch timetable.");
+        if (!response.ok)
+          throw new Error(
+            "Could not fetch your personal timetable. Please ensure you have been assigned subjects by an administrator."
+          );
 
-        const data: TimetableEntry[] = await timetableRes.json();
+        const data: TimetableEntry[] = await response.json();
 
         // Group entries by day of the week
         const groupedByDay = data.reduce(
@@ -92,7 +80,7 @@ export default function TimetablePage() {
         setIsLoading(false);
       }
     };
-    fetchTimetable();
+    fetchTeacherSchedule();
   }, []);
 
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
@@ -103,11 +91,9 @@ export default function TimetablePage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Weekly Timetable</CardTitle>
+        <CardTitle>My Weekly Timetable</CardTitle>
         <CardDescription>
-          {classDetails
-            ? `Showing timetable for ${classDetails.name}`
-            : "Your class timetable for the week."}
+          Your personal teaching schedule for the week.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -127,12 +113,8 @@ export default function TimetablePage() {
                         {entry.startTime.substring(0, 5)} -{" "}
                         {entry.endTime.substring(0, 5)}
                       </p>
-                      <p className="mt-1 text-xs text-gray-500">
-                        Teacher: {entry.teacher.firstName}{" "}
-                        {entry.teacher.middleName
-                          ? `${entry.teacher.middleName} `
-                          : ""}
-                        {entry.teacher.lastName}
+                      <p className="mt-1 text-xs font-semibold text-indigo-600">
+                        Class: {entry.class.name}
                       </p>
                     </div>
                   ))
