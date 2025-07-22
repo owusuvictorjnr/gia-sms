@@ -4,11 +4,11 @@ import { Repository } from "typeorm";
 import { TimetableEntry } from "./timetable.entity";
 import { CreateTimetableEntryDto } from "./dto/create-timetable-entry.dto";
 
+
 /**
- * TimetableService is responsible for managing timetable entries.
- * It provides methods to create and retrieve timetable entries for specific classes.
+ * TimetableService handles the business logic for timetable management,
+ * including creating timetable entries and retrieving schedules for classes and teachers.
  */
-// The TimetableService is responsible for managing timetable entries, including creating and retrieving them for specific classes.
 @Injectable()
 export class TimetableService {
   constructor(
@@ -24,8 +24,17 @@ export class TimetableService {
   async findForClass(classId: string): Promise<TimetableEntry[]> {
     return this.timetableRepository.find({
       where: { classId },
-      relations: ["teacher"], // Include teacher details
+      relations: ["teacher"],
       order: { startTime: "ASC" },
+    });
+  }
+
+  // New method to find the schedule for a specific teacher
+  async findForTeacher(teacherId: string): Promise<TimetableEntry[]> {
+    return this.timetableRepository.find({
+      where: { teacherId },
+      relations: ["class"], // Include class details in the response
+      order: { dayOfWeek: "ASC", startTime: "ASC" },
     });
   }
 }
