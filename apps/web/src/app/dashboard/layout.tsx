@@ -17,7 +17,7 @@ import AnnouncementsPage from "./components/AnnouncementsPage";
 import UserManagementPage from "./components/UserManagementPage";
 import ClassManagementPage from "./components/ClassManagementPage";
 import TimetablePage from "./components/TimetablePage";
-import TimetableManagementPage from "./components/TimetableManagementPage"; // Import the new admin page
+import TimetableManagementPage from "./components/TimetableManagementPage";
 import CalendarPage from "./components/CalendarPage";
 import CalendarManagementPage from "./components/CalendarManagementPage";
 import HealthRecordPage from "./components/HealthRecordPage";
@@ -77,7 +77,7 @@ export default function DashboardLayout() {
           case "teacher":
             return (
               <TeacherDashboard setView={setActiveView} profile={profile} />
-            );
+            ); // Pass profile here
           case "parent":
             return <ParentDashboard />;
           case "accountant":
@@ -106,7 +106,6 @@ export default function DashboardLayout() {
       case "class-management":
         return <ClassManagementPage />;
       case "timetable":
-        // Show the correct timetable page based on the user's role
         if (profile.role === "admin" || profile.role === "accountant") {
           return <TimetableManagementPage />;
         }
