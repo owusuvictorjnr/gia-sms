@@ -1,45 +1,57 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { Repository } from "typeorm";
+import { Repository, In } from "typeorm";
 import { Announcement } from "./announcement.entity";
 import { CreateAnnouncementDto } from "./dto/create-announcement.dto";
 import { User } from "../user/user.entity";
-import { AnnouncementStatus } from "shared-types/src/announcement-status.enum"; // Import from shared package
+import { Class } from "../class/class.entity";
+import { AnnouncementStatus } from "shared-types/src/announcement-status.enum";
 
-// AnnouncementService handles the business logic for announcements@Injectable()
+
+// This service handles the business logic for announcements, including creation, retrieval, and status updates.
+@Injectable()
 export class AnnouncementService {
   constructor(
     @InjectRepository(Announcement)
-    private announcementsRepository: Repository<Announcement>
+    private announcementsRepository: Repository<Announcement>,
+    @InjectRepository(Class)
+    private classesRepository: Repository<Class>
   ) {}
 
-  // For a teacher to create a new announcement
   async create(
-    createAnnouncementDto: CreateAnnouncementDto,
-    author: any // The user object from the JWT payload
+    createDto: CreateAnnouncementDto,
+    author: any
   ): Promise<Announcement> {
+    const targetClasses = await this.classesRepository.findBy({
+      id: In(createDto.classIds),
+    });
+
+    if (targetClasses.length !== createDto.classIds.length) {
+      throw new NotFoundException("One or more classes not found.");
+    }
+
     const newAnnouncement = this.announcementsRepository.create({
-      ...createAnnouncementDto,
+      title: createDto.title,
+      content: createDto.content,
       authorId: author.userId,
       status: AnnouncementStatus.PENDING,
+      classes: targetClasses,
     });
     return this.announcementsRepository.save(newAnnouncement);
   }
 
-  // For an admin to find all pending announcements
   async findPending(): Promise<Announcement[]> {
     return this.announcementsRepository.find({
       where: { status: AnnouncementStatus.PENDING },
-      relations: ["author"], // Include the author's details
+      relations: ["author", "classes"],
       order: { createdAt: "DESC" },
     });
   }
 
-  // For an admin to approve or reject an announcement
   async updateStatus(
     id: string,
     status: AnnouncementStatus,
-    admin: any // The user object from the JWT payload
+    admin: any
   ): Promise<Announcement> {
     const announcement = await this.announcementsRepository.findOneBy({ id });
     if (!announcement) {
@@ -54,12 +66,11 @@ export class AnnouncementService {
     return this.announcementsRepository.save(announcement);
   }
 
-  // New method to find all approved announcements for parents
   async findAllApproved(): Promise<Announcement[]> {
     return this.announcementsRepository.find({
       where: { status: AnnouncementStatus.APPROVED },
-      relations: ["author"], // Include author details
-      order: { createdAt: "DESC" }, // Show newest first
+      relations: ["author", "classes"],
+      order: { createdAt: "DESC" },
     });
   }
 }
