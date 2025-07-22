@@ -12,21 +12,22 @@ import { CreateTimetableEntryDto } from "./dto/create-timetable-entry.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
-import { UserRole } from "../user/user.entity";
+import { User, UserRole } from "../user/user.entity";
+import { GetUser } from "src/auth/get-user.decorator";
 
 
 /**
- * This controller handles timetable-related operations such as creating timetable entries and fetching timetables for classes.
+ * TimetableController handles all timetable-related operations.
+ * It provides endpoints for creating timetable entries and retrieving schedules for classes and teachers.
  */
-
 @Controller("timetables")
-@UseGuards(JwtAuthGuard) // Protect all routes in this controller
+@UseGuards(JwtAuthGuard)
 export class TimetableController {
   constructor(private readonly timetableService: TimetableService) {}
 
   @Post()
   @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.TEACHER) // Only admins and teachers can create entries
+  @Roles(UserRole.ADMIN, UserRole.TEACHER)
   create(
     @Body(new ValidationPipe()) createTimetableEntryDto: CreateTimetableEntryDto
   ) {
@@ -34,8 +35,15 @@ export class TimetableController {
   }
 
   @Get("/class/:classId")
-  // Any authenticated user can view a class timetable
   findForClass(@Param("classId") classId: string) {
     return this.timetableService.findForClass(classId);
+  }
+
+  // New endpoint for a teacher to get their personal schedule
+  @Get("my-schedule")
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.TEACHER)
+  findMySchedule(@GetUser() user: { userId: string }) {
+    return this.timetableService.findForTeacher(user.userId);
   }
 }
