@@ -1,19 +1,30 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Class } from "./class.entity";
 import { CreateClassDto } from "./dto/create-class.dto";
 import { User, UserRole } from "../user/user.entity";
+import { TimetableEntry } from "../timetable/timetable.entity";
 
-// The ClassService is responsible for managing class-related operations such as creating classes, assigning users to classes, and fetching class rosters for teachers.
 
+/**
+ * ClassService handles the business logic for class management,
+ * including creating classes, assigning users, setting homeroom teachers,
+ * and retrieving classes and rosters for teachers.
+ */
 @Injectable()
 export class ClassService {
   constructor(
     @InjectRepository(Class)
     private classesRepository: Repository<Class>,
     @InjectRepository(User)
-    private usersRepository: Repository<User>
+    private usersRepository: Repository<User>,
+    @InjectRepository(TimetableEntry) // Inject TimetableEntry repository
+    private timetableRepository: Repository<TimetableEntry>
   ) {}
 
   async create(createClassDto: CreateClassDto): Promise<Class> {
@@ -23,6 +34,7 @@ export class ClassService {
 
   async findAll(): Promise<Class[]> {
     return this.classesRepository.find({
+      relations: ["homeroomTeacher"],
       order: { academicYear: "DESC", name: "ASC" },
     });
   }
@@ -43,11 +55,45 @@ export class ClassService {
     return result as User;
   }
 
-  // New method to get the teacher's assigned class
+  async setHomeroomTeacher(classId: string, teacherId: string): Promise<Class> {
+    const classToUpdate = await this.classesRepository.findOneBy({
+      id: classId,
+    });
+    const teacher = await this.usersRepository.findOneBy({ id: teacherId });
+
+    if (!classToUpdate || !teacher) {
+      throw new NotFoundException("Class or Teacher not found.");
+    }
+    if (teacher.role !== UserRole.TEACHER) {
+      throw new BadRequestException("The selected user is not a teacher.");
+    }
+
+    classToUpdate.homeroomTeacherId = teacher.id;
+    return this.classesRepository.save(classToUpdate);
+  }
+
+  // New method to find all unique classes a teacher is assigned to via the timetable
+  async findClassesForTeacher(teacherId: string): Promise<Class[]> {
+    const entries = await this.timetableRepository.find({
+      where: { teacherId },
+      relations: ["class"],
+    });
+
+    // Get unique classes from the timetable entries
+    const uniqueClasses = entries.reduce((acc, entry) => {
+      if (entry.class && !acc.some((c) => c.id === entry.class.id)) {
+        acc.push(entry.class);
+      }
+      return acc;
+    }, [] as Class[]);
+
+    return uniqueClasses;
+  }
+
   async findClassByTeacher(teacherPayload: { userId: string }): Promise<Class> {
     const teacher = await this.usersRepository.findOne({
       where: { id: teacherPayload.userId },
-      relations: ["class"], // Load the related class
+      relations: ["class"],
     });
 
     if (!teacher || !teacher.class) {
@@ -62,11 +108,9 @@ export class ClassService {
     const teacher = await this.usersRepository.findOneBy({
       id: teacherPayload.userId,
     });
-
     if (!teacher || !teacher.classId) {
       return [];
     }
-
     const students = await this.usersRepository.find({
       where: {
         classId: teacher.classId,
@@ -74,7 +118,6 @@ export class ClassService {
       },
       order: { lastName: "ASC" },
     });
-
     return students.map(({ password, ...rest }) => rest as User);
   }
 }
