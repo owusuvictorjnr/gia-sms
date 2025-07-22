@@ -16,6 +16,14 @@ interface ClassDetails {
   academicYear: string;
 }
 
+interface TimetableEntry {
+  id: string;
+  dayOfWeek: string;
+  startTime: string;
+  endTime: string;
+  subject: string;
+}
+
 interface UserProfile {
   firstName?: string;
   lastName?: string;
@@ -40,6 +48,7 @@ export default function TeacherDashboard({
 }: TeacherDashboardProps) {
   const [roster, setRoster] = useState<Student[]>([]);
   const [classDetails, setClassDetails] = useState<ClassDetails | null>(null);
+  const [schedule, setSchedule] = useState<TimetableEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -52,12 +61,15 @@ export default function TeacherDashboard({
         return;
       }
       try {
-        // Fetch roster and class details in parallel
-        const [rosterRes, classRes] = await Promise.all([
+        // Fetch roster, class details, and full schedule in parallel
+        const [rosterRes, classRes, scheduleRes] = await Promise.all([
           fetch("http://localhost:3001/classes/my-roster", {
             headers: { Authorization: `Bearer ${token}` },
           }),
           fetch("http://localhost:3001/classes/my-class", {
+            headers: { Authorization: `Bearer ${token}` },
+          }),
+          fetch("http://localhost:3001/timetables/my-schedule", {
             headers: { Authorization: `Bearer ${token}` },
           }),
         ]);
@@ -66,12 +78,23 @@ export default function TeacherDashboard({
           throw new Error(
             "Failed to fetch class data. Please ensure you are assigned to a class."
           );
+        if (!scheduleRes.ok) throw new Error("Failed to fetch schedule.");
 
         const rosterData = await rosterRes.json();
         const classData = await classRes.json();
+        const scheduleData = await scheduleRes.json();
 
         setRoster(rosterData);
         setClassDetails(classData);
+
+        // Filter schedule for today
+        const today = new Date()
+          .toLocaleString("en-US", { weekday: "long" })
+          .toLowerCase();
+        const todaysSchedule = scheduleData.filter(
+          (entry: TimetableEntry) => entry.dayOfWeek === today
+        );
+        setSchedule(todaysSchedule);
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -80,13 +103,6 @@ export default function TeacherDashboard({
     };
     fetchData();
   }, []);
-
-  // Mock data for the schedule
-  const schedule = [
-    { time: "8:30 AM", subject: "Mathematics" },
-    { time: "9:30 AM", subject: "English" },
-    { time: "11:00 AM", subject: "Science" },
-  ];
 
   return (
     <div className="space-y-6">
@@ -135,19 +151,25 @@ export default function TeacherDashboard({
               Today's Schedule {classDetails && `- ${classDetails.name}`}
             </h3>
             <ul className="mt-2 space-y-2">
-              {schedule.map((item) => (
-                <li
-                  key={item.time}
-                  className="flex items-center justify-between rounded-md p-2 hover:bg-gray-50"
-                >
-                  <div>
-                    <p className="font-medium">{item.subject}</p>
-                  </div>
-                  <span className="font-mono text-sm text-gray-600">
-                    {item.time}
-                  </span>
-                </li>
-              ))}
+              {schedule.length > 0 ? (
+                schedule.map((item) => (
+                  <li
+                    key={item.id}
+                    className="flex items-center justify-between rounded-md p-2 hover:bg-gray-50"
+                  >
+                    <div>
+                      <p className="font-medium">{item.subject}</p>
+                    </div>
+                    <span className="font-mono text-sm text-gray-600">
+                      {item.startTime.substring(0, 5)}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <p className="text-sm text-gray-500">
+                  No classes scheduled for today.
+                </p>
+              )}
             </ul>
           </div>
         </div>
