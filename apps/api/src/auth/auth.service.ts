@@ -1,15 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { UserService } from '../user/user.service';
-import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcryptjs'; // Changed from 'bcrypt' to 'bcryptjs'
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { UserService } from "../user/user.service";
+import { JwtService } from "@nestjs/jwt";
+import * as bcrypt from "bcryptjs";
 
-
-// The AuthService handles user authentication, including validating users and generating JWT tokens.
+// AuthService handles user authentication and JWT generation
 @Injectable()
 export class AuthService {
   constructor(
     private userService: UserService,
-    private jwtService: JwtService,
+    private jwtService: JwtService
   ) {}
 
   async validateUser(email: string, pass: string): Promise<any> {
@@ -21,8 +20,17 @@ export class AuthService {
     return null;
   }
 
+  // Generates a JWT token for the authenticated user
   async login(user: any) {
-    const payload = { email: user.email, sub: user.id, role: user.role };
+    // Add firstName and lastName to the JWT payload
+    const payload = {
+      email: user.email,
+      sub: user.id,
+      role: user.role,
+      firstName: user.firstName,
+      middleName: user.middleName, // Include middleName if it exists
+      lastName: user.lastName,
+    };
     return {
       access_token: this.jwtService.sign(payload),
     };
