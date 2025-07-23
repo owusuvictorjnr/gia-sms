@@ -10,7 +10,6 @@ import { CreateClassDto } from "./dto/create-class.dto";
 import { User, UserRole } from "../user/user.entity";
 import { TimetableEntry } from "../timetable/timetable.entity";
 
-
 /**
  * ClassService handles the business logic for class management,
  * including creating classes, assigning users, setting homeroom teachers,
@@ -23,7 +22,7 @@ export class ClassService {
     private classesRepository: Repository<Class>,
     @InjectRepository(User)
     private usersRepository: Repository<User>,
-    @InjectRepository(TimetableEntry) // Inject TimetableEntry repository
+    @InjectRepository(TimetableEntry)
     private timetableRepository: Repository<TimetableEntry>
   ) {}
 
@@ -70,6 +69,26 @@ export class ClassService {
 
     classToUpdate.homeroomTeacherId = teacher.id;
     return this.classesRepository.save(classToUpdate);
+  }
+
+  // New method to get the roster for a homeroom teacher
+  async findStudentsByHomeroomTeacher(teacherId: string): Promise<User[]> {
+    const teacherClass = await this.classesRepository.findOne({
+      where: { homeroomTeacherId: teacherId },
+    });
+
+    if (!teacherClass) {
+      return []; // This teacher is not a homeroom teacher for any class
+    }
+
+    const students = await this.usersRepository.find({
+      where: {
+        classId: teacherClass.id,
+        role: UserRole.STUDENT,
+      },
+      order: { lastName: "ASC" },
+    });
+    return students.map(({ password, ...rest }) => rest as User);
   }
 
   // New method to find all unique classes a teacher is assigned to via the timetable
