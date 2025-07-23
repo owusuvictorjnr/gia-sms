@@ -8,7 +8,6 @@ import { AuthModule } from "../auth/auth.module";
 import { TimetableEntry } from "../timetable/timetable.entity"; // Import TimetableEntry
 
 // This module is responsible for managing classes in the application.
-
 @Module({
   imports: [
     TypeOrmModule.forFeature([Class, User, TimetableEntry]), // Add TimetableEntry here
