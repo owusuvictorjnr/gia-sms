@@ -1,9 +1,12 @@
+"use client";
+
 import { useState, useEffect } from "react";
-import { AttendanceStatus } from "shared-types/src/attendance-status.enum"; // Import from shared package
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AttendanceStatus } from "shared-types/src/attendance-status.enum";
+import { useToast } from "@/hooks/use-toast";
 
-
-// RollCallPage component for managing student attendance
-// Define the shapes of our data
+// Define data shapes
 interface Student {
   id: string;
   firstName: string;
@@ -15,37 +18,32 @@ interface StudentAttendanceState extends Student {
   status: AttendanceStatus | "unmarked";
 }
 
-// Helper function to get the auth token
 const getAuthToken = (): string | null => {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined")
     return localStorage.getItem("access_token");
-  }
   return null;
 };
 
-// Helper function to get today's date in YYYY-MM-DD format
-const getTodayDateString = () => {
-  const today = new Date();
-  return today.toISOString().split("T")[0];
-};
+const getTodayDateString = () => new Date().toISOString().split("T")[0];
 
 export default function RollCallPage() {
   const [students, setStudents] = useState<StudentAttendanceState[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+  const { toast } = useToast();
   const todayDate = getTodayDateString();
 
   useEffect(() => {
     const fetchData = async () => {
       const token = getAuthToken();
       if (!token) {
-        setError("Authentication error. Please log in again.");
+        setError("Authentication error.");
         setIsLoading(false);
         return;
       }
-
       try {
-        // Fetch students and today's attendance records simultaneously
+        // In a real subject-based system, you'd fetch students for a specific class.
+        // For now, we'll assume the teacher is a homeroom teacher for all students returned.
         const [studentsRes, attendanceRes] = await Promise.all([
           fetch("http://localhost:3001/users/students", {
             headers: { Authorization: `Bearer ${token}` },
@@ -55,9 +53,10 @@ export default function RollCallPage() {
           }),
         ]);
 
-        if (!studentsRes.ok) throw new Error("Failed to fetch students.");
+        if (!studentsRes.ok)
+          throw new Error("Failed to fetch students for your class.");
         if (!attendanceRes.ok)
-          throw new Error("Failed to fetch attendance records.");
+          throw new Error("Failed to fetch today's attendance records.");
 
         const studentsData: Student[] = await studentsRes.json();
         const attendanceData: {
@@ -69,12 +68,12 @@ export default function RollCallPage() {
           attendanceData.map((att) => [att.studentId, att.status])
         );
 
-        const studentListWithStatus = studentsData.map((student) => ({
-          ...student,
-          // FIX: Explicitly cast the status to the correct type
-          status: (attendanceMap.get(student.id) ||
-            "unmarked") as StudentAttendanceState["status"],
-        }));
+        const studentListWithStatus: StudentAttendanceState[] =
+          studentsData.map((student) => ({
+            ...student,
+            status:
+              (attendanceMap.get(student.id) as AttendanceStatus) || "unmarked",
+          }));
 
         setStudents(studentListWithStatus);
       } catch (err: any) {
@@ -83,7 +82,6 @@ export default function RollCallPage() {
         setIsLoading(false);
       }
     };
-
     fetchData();
   }, [todayDate]);
 
@@ -105,7 +103,10 @@ export default function RollCallPage() {
       .map((s) => ({ studentId: s.id, status: s.status as AttendanceStatus }));
 
     if (recordsToSubmit.length === 0) {
-      alert("Please mark attendance for at least one student.");
+      toast({
+        title: "Info",
+        description: "Please mark attendance for at least one student.",
+      });
       return;
     }
 
@@ -119,104 +120,88 @@ export default function RollCallPage() {
         body: JSON.stringify({ date: todayDate, records: recordsToSubmit }),
       });
 
-      if (!response.ok) {
-        throw new Error("Failed to submit attendance.");
-      }
+      if (!response.ok) throw new Error("Failed to submit attendance.");
 
-      alert("Attendance submitted successfully!");
+      toast({
+        title: "Success",
+        description: "Attendance submitted successfully!",
+      });
     } catch (err: any) {
-      setError(err.message);
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     }
-  };
-
-  const getStatusButtonClass = (
-    studentStatus: StudentAttendanceState["status"],
-    buttonStatus: AttendanceStatus
-  ) => {
-    if (studentStatus === buttonStatus) {
-      switch (buttonStatus) {
-        case "present":
-          return "bg-green-500 text-white";
-        case "absent":
-          return "bg-red-500 text-white";
-        case "late":
-          return "bg-yellow-500 text-white";
-      }
-    }
-    return "bg-gray-200 text-gray-700 hover:bg-gray-300";
   };
 
   if (isLoading) return <div>Loading Roll Call...</div>;
   if (error) return <div className="text-red-500">Error: {error}</div>;
 
   return (
-    <div className="rounded-lg bg-white p-6 shadow">
-      <div className="mb-6 border-b pb-4">
-        <h2 className="text-2xl font-bold text-gray-800">
-          Roll Call - Grade 5
-        </h2>
-        <p className="mt-1 text-gray-600">
+    <Card>
+      <CardHeader>
+        <CardTitle>Roll Call</CardTitle>
+        <p className="text-sm text-gray-500">
           Date:{" "}
-          <span className="font-semibold">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </span>
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
         </p>
-      </div>
-
-      <div className="space-y-3">
-        {students.map((student) => (
-          <div
-            key={student.id}
-            className="flex flex-col items-center justify-between rounded-lg border p-4 sm:flex-row"
-          >
-            <p className="mb-3 font-medium sm:mb-0">
-              {[student.firstName, student.middleName, student.lastName]
-                .filter(Boolean)
-                .join(" ")}
-            </p>
-            <div className="flex space-x-2">
-              <button
-                onClick={() =>
-                  handleStatusChange(student.id, AttendanceStatus.PRESENT)
-                }
-                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, AttendanceStatus.PRESENT)}`}
-              >
-                Present
-              </button>
-              <button
-                onClick={() =>
-                  handleStatusChange(student.id, AttendanceStatus.ABSENT)
-                }
-                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, AttendanceStatus.ABSENT)}`}
-              >
-                Absent
-              </button>
-              <button
-                onClick={() =>
-                  handleStatusChange(student.id, AttendanceStatus.LATE)
-                }
-                className={`w-24 rounded-md px-3 py-2 text-sm font-semibold transition-colors ${getStatusButtonClass(student.status, AttendanceStatus.LATE)}`}
-              >
-                Late
-              </button>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {students.map((student) => (
+            <div
+              key={student.id}
+              className="flex flex-col items-center justify-between rounded-lg border p-4 sm:flex-row"
+            >
+              <p className="mb-3 font-medium sm:mb-0">
+                {[student.firstName, student.middleName, student.lastName]
+                  .filter(Boolean)
+                  .join(" ")}
+              </p>
+              <div className="flex space-x-2">
+                <Button
+                  onClick={() =>
+                    handleStatusChange(student.id, AttendanceStatus.PRESENT)
+                  }
+                  variant={student.status === "present" ? "default" : "outline"}
+                  size="sm"
+                >
+                  Present
+                </Button>
+                <Button
+                  onClick={() =>
+                    handleStatusChange(student.id, AttendanceStatus.ABSENT)
+                  }
+                  variant={
+                    student.status === "absent" ? "destructive" : "outline"
+                  }
+                  size="sm"
+                >
+                  Absent
+                </Button>
+                <Button
+                  onClick={() =>
+                    handleStatusChange(student.id, AttendanceStatus.LATE)
+                  }
+                  variant={student.status === "late" ? "secondary" : "outline"}
+                  size="sm"
+                >
+                  Late
+                </Button>
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="mt-8 border-t pt-6">
-        <button
-          onClick={handleSubmit}
-          className="w-full rounded-md bg-indigo-600 py-3 font-semibold text-white hover:bg-indigo-700 sm:w-auto sm:px-8"
-        >
-          Submit Attendance
-        </button>
-      </div>
-    </div>
+          ))}
+        </div>
+        <div className="mt-8 border-t pt-6">
+          <Button onClick={handleSubmit}>Submit Attendance</Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
