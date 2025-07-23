@@ -77,7 +77,7 @@ export default function DashboardLayout() {
           case "teacher":
             return (
               <TeacherDashboard setView={setActiveView} profile={profile} />
-            ); // Pass profile here
+            );
           case "parent":
             return <ParentDashboard />;
           case "accountant":
@@ -106,10 +106,8 @@ export default function DashboardLayout() {
       case "class-management":
         return <ClassManagementPage />;
       case "timetable":
-        if (profile.role === "admin" || profile.role === "accountant") {
-          return <TimetableManagementPage />;
-        }
-        return <TimetablePage />;
+        // Pass the profile to the TimetablePage
+        return <TimetablePage profile={profile} />;
       case "calendar":
         if (profile.role === "admin") {
           return <CalendarManagementPage />;
