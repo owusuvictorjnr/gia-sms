@@ -4,17 +4,17 @@ import { User } from "../user/user.entity";
 import { ParentController } from "./parent.controller";
 import { ParentService } from "./parent.service";
 import { AuthModule } from "../auth/auth.module";
-import { GradeModule } from "src/grade/grade.module";
-import { AttendanceModule } from "src/attendance/attendance.module";
-
+import { GradeModule } from "../grade/grade.module";
+import { Attendance } from "../attendance/attendance.entity";
+import { TimetableModule } from "../timetable/timetable.module"; // Import TimetableModule
 
 // The ParentModule is responsible for managing parent-related functionality
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]), // We need the User repository to find parents/children
-    AuthModule, // We need this for the JwtAuthGuard
-     GradeModule, // Import GradeModule to use GradeService
-    AttendanceModule, // Import AttendanceModule to use AttendanceService
+    TypeOrmModule.forFeature([User, Attendance]),
+    AuthModule,
+    GradeModule,
+    TimetableModule, // Add TimetableModule to imports
   ],
   controllers: [ParentController],
   providers: [ParentService],
