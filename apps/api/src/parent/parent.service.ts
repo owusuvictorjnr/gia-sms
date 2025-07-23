@@ -8,6 +8,9 @@ import { Repository } from "typeorm";
 import { User } from "../user/user.entity";
 import { GradeService } from "../grade/grade.service";
 import { AttendanceService } from "../attendance/attendance.service";
+import { Attendance } from "src/attendance/attendance.entity";
+import { AttendanceStatus } from "shared-types/src/attendance-status.enum";
+import { TimetableService } from "src/timetable/timetable.service";
 
 // The ParentService is responsible for managing parent-related functionality
 @Injectable()
@@ -15,10 +18,11 @@ export class ParentService {
   constructor(
     @InjectRepository(User)
     private usersRepository: Repository<User>,
+    @InjectRepository(Attendance)
+    private attendanceRepository: Repository<Attendance>,
     private gradeService: GradeService,
-    private attendanceService: AttendanceService
+    private timetableService: TimetableService // Inject TimetableService
   ) {}
-
 
   /**
    * Verifies if the parent is linked to the child.
@@ -26,23 +30,23 @@ export class ParentService {
    * @param parent The parent user.
    * @param childId The ID of the child.
    */
+
   private async verifyParentChildLink(
     parent: User,
     childId: string
-  ): Promise<void> {
+  ): Promise<User> {
     const parentWithChildren = await this.usersRepository.findOne({
       where: { id: parent.id },
       relations: ["children"],
     });
+    const child = parentWithChildren?.children.find((c) => c.id === childId);
 
-    if (
-      !parentWithChildren ||
-      !parentWithChildren.children.some((child) => child.id === childId)
-    ) {
+    if (!child) {
       throw new UnauthorizedException(
         "You are not authorized to view this child's data."
       );
     }
+    return child;
   }
 
   async findMyChildren(parent: User): Promise<User[]> {
@@ -73,14 +77,36 @@ export class ParentService {
     return grades.slice(0, 5);
   }
 
+  // New method to get a child's timetable
+  async getChildTimetable(parent: User, childId: string) {
+    const child = await this.verifyParentChildLink(parent, childId);
+
+    if (!child.classId) {
+      throw new NotFoundException(
+        "This student is not currently assigned to a class."
+      );
+    }
+
+    return this.timetableService.findForClass(child.classId);
+  }
+
   async getChildAttendanceSummary(parent: User, childId: string) {
     await this.verifyParentChildLink(parent, childId);
-    // In a real app, you would fetch records for the current term and calculate the summary.
-    // For this example, we will return mock data.
-    return {
-      present: 58,
-      absent: 2,
-      late: 1,
+
+    // Fetch all attendance records for the student
+    const records = await this.attendanceRepository.find({
+      where: { studentId: childId },
+    });
+
+    // Calculate the summary
+    const summary = {
+      present: records.filter((r) => r.status === AttendanceStatus.PRESENT)
+        .length,
+      absent: records.filter((r) => r.status === AttendanceStatus.ABSENT)
+        .length,
+      late: records.filter((r) => r.status === AttendanceStatus.LATE).length,
     };
+
+    return summary;
   }
 }
