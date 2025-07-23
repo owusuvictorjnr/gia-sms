@@ -4,7 +4,6 @@ import { User } from "../user/user.entity";
 import { ParentService } from "./parent.service";
 import { GetUser } from "src/auth/get-user.decorator";
 
-// ParentController handles routes related to parents
 @Controller("parent")
 @UseGuards(JwtAuthGuard)
 export class ParentController {
@@ -14,8 +13,6 @@ export class ParentController {
   findMyChildren(@GetUser() parent: User) {
     return this.parentService.findMyChildren(parent);
   }
-
-  // Get details of a specific child by ID
 
   @Get("child/:childId/grades")
   getChildGrades(@GetUser() parent: User, @Param("childId") childId: string) {
@@ -28,5 +25,14 @@ export class ParentController {
     @Param("childId") childId: string
   ) {
     return this.parentService.getChildAttendanceSummary(parent, childId);
+  }
+
+  // New endpoint for a child's timetable
+  @Get("child/:childId/timetable")
+  getChildTimetable(
+    @GetUser() parent: User,
+    @Param("childId") childId: string
+  ) {
+    return this.parentService.getChildTimetable(parent, childId);
   }
 }
