@@ -8,6 +8,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 
 // Define data shapes
 interface TimetableEntry {
@@ -16,63 +24,94 @@ interface TimetableEntry {
   startTime: string;
   endTime: string;
   subject: string;
-  class: {
-    // The class the subject is for
-    name: string;
-  };
+  teacher: { firstName: string; middleName: string; lastName: string };
+  class?: { name: string };
+}
+interface Child {
+  id: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+}
+interface UserProfile {
+  role: string;
 }
 
-// Helper function to get the auth token
 const getAuthToken = (): string | null => {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined")
     return localStorage.getItem("access_token");
-  }
   return null;
 };
 
-export default function TimetablePage() {
+export default function TimetablePage({
+  profile,
+}: {
+  profile: UserProfile | null;
+}) {
   const [timetable, setTimetable] = useState<Record<string, TimetableEntry[]>>(
     {}
   );
+  const [children, setChildren] = useState<Child[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState<string>("");
+  const [title, setTitle] = useState("Weekly Timetable");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchTeacherSchedule = async () => {
+    const fetchTimetableData = async () => {
       const token = getAuthToken();
-      if (!token) {
+      if (!token || !profile) {
         setError("Authentication error.");
         setIsLoading(false);
         return;
       }
+
       try {
-        // Call the new endpoint to get only the teacher's schedule
-        const response = await fetch(
-          "http://localhost:3001/timetables/my-schedule",
-          {
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        if (!response.ok)
-          throw new Error(
-            "Could not fetch your personal timetable. Please ensure you have been assigned subjects by an administrator."
+        let timetableData: TimetableEntry[] = [];
+        if (profile.role === "teacher" || profile.role === "student") {
+          const response = await fetch(
+            "http://localhost:3001/timetables/my-schedule",
+            { headers: { Authorization: `Bearer ${token}` } }
           );
+          if (!response.ok)
+            throw new Error("Could not fetch your personal timetable.");
+          timetableData = await response.json();
+          setTitle("My Weekly Teaching Schedule");
+        } else if (profile.role === "parent") {
+          const childrenRes = await fetch(
+            "http://localhost:3001/parent/my-children",
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          if (!childrenRes.ok)
+            throw new Error("Failed to fetch your children's data.");
+          const childrenData = await childrenRes.json();
+          setChildren(childrenData);
 
-        const data: TimetableEntry[] = await response.json();
+          if (childrenData.length > 0) {
+            const childId = selectedChildId || childrenData[0].id;
+            if (!selectedChildId) setSelectedChildId(childId);
 
-        // Group entries by day of the week
-        const groupedByDay = data.reduce(
+            const timetableRes = await fetch(
+              `http://localhost:3001/parent/child/${childId}/timetable`,
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            if (!timetableRes.ok)
+              throw new Error("Failed to fetch timetable for this child.");
+            timetableData = await timetableRes.json();
+            const selectedChild = childrenData.find(
+              (c: Child) => c.id === childId
+            );
+            setTitle(`Weekly Timetable for ${selectedChild?.firstName}`);
+          }
+        }
+
+        const groupedByDay = timetableData.reduce(
           (acc, entry) => {
-            const day = entry.dayOfWeek;
-            if (!acc[day]) {
-              acc[day] = [];
-            }
-            acc[day].push(entry);
+            (acc[entry.dayOfWeek] = acc[entry.dayOfWeek] || []).push(entry);
             return acc;
           },
           {} as Record<string, TimetableEntry[]>
         );
-
         setTimetable(groupedByDay);
       } catch (err: any) {
         setError(err.message);
@@ -80,8 +119,8 @@ export default function TimetablePage() {
         setIsLoading(false);
       }
     };
-    fetchTeacherSchedule();
-  }, []);
+    fetchTimetableData();
+  }, [profile, selectedChildId]);
 
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday"];
 
@@ -91,10 +130,24 @@ export default function TimetablePage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>My Weekly Timetable</CardTitle>
-        <CardDescription>
-          Your personal teaching schedule for the week.
-        </CardDescription>
+        <CardTitle>{title}</CardTitle>
+        {profile?.role === "parent" && children.length > 0 && (
+          <div className="pt-4">
+            <Label htmlFor="child-select">Select Child:</Label>
+            <Select onValueChange={setSelectedChildId} value={selectedChildId}>
+              <SelectTrigger id="child-select" className="w-[280px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {children.map((child) => (
+                  <SelectItem key={child.id} value={child.id}>
+                    {child.firstName} {child.lastName}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </CardHeader>
       <CardContent>
         <div className="grid grid-cols-1 gap-4 md:grid-cols-3 lg:grid-cols-5">
@@ -113,8 +166,12 @@ export default function TimetablePage() {
                         {entry.startTime.substring(0, 5)} -{" "}
                         {entry.endTime.substring(0, 5)}
                       </p>
-                      <p className="mt-1 text-xs font-semibold text-indigo-600">
-                        Class: {entry.class.name}
+                      <p className="mt-1 text-xs text-gray-500">
+                        Teacher: {entry.teacher.firstName}{" "}
+                        {entry.teacher.middleName
+                          ? entry.teacher.middleName + " "
+                          : ""}
+                        {entry.teacher.lastName}
                       </p>
                     </div>
                   ))
