@@ -24,13 +24,17 @@ interface TimetableEntry {
   startTime: string;
   endTime: string;
   subject: string;
-  teacher: { firstName: string; middleName: string; lastName: string };
+  teacher: {
+    middleName: any;
+    firstName: string;
+    lastName: string;
+  };
   class?: { name: string };
 }
 interface Child {
   id: string;
   firstName: string;
-  middleName?: string;
+  middleName?: string; // Optional middle name
   lastName: string;
 }
 interface UserProfile {
