@@ -4,7 +4,6 @@ import { Repository } from "typeorm";
 import { TimetableEntry } from "./timetable.entity";
 import { CreateTimetableEntryDto } from "./dto/create-timetable-entry.dto";
 
-
 /**
  * TimetableService handles the business logic for timetable management,
  * including creating timetable entries and retrieving schedules for classes and teachers.
@@ -33,7 +32,8 @@ export class TimetableService {
   async findForTeacher(teacherId: string): Promise<TimetableEntry[]> {
     return this.timetableRepository.find({
       where: { teacherId },
-      relations: ["class"], // Include class details in the response
+      // FIX: Add 'teacher' to the relations array
+      relations: ["class", "teacher"],
       order: { dayOfWeek: "ASC", startTime: "ASC" },
     });
   }
