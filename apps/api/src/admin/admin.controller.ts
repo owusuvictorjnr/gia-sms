@@ -3,12 +3,12 @@ import {
   Get,
   Post,
   Delete,
+  Patch,
   Body,
   Query,
   Param,
   UseGuards,
   ValidationPipe,
-  Patch,
 } from "@nestjs/common";
 import { AdminService } from "./admin.service";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
@@ -17,6 +17,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { UserRole } from "../user/user.entity";
 import { LinkParentChildDto } from "./dto/link-parent-child.dto";
 import { UpdateUserDto } from "./dto/update-user.dto";
+import { PromoteStudentsDto } from "./dto/promote-students.dto";
 
 @Controller("admin")
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -50,6 +51,14 @@ export class AdminController {
       linkParentChildDto.parentId,
       linkParentChildDto.childId
     );
+  }
+
+  @Post("promotions") // New endpoint for promotions
+  @Roles(UserRole.ADMIN)
+  promoteStudents(
+    @Body(new ValidationPipe()) promoteStudentsDto: PromoteStudentsDto
+  ) {
+    return this.adminService.promoteStudents(promoteStudentsDto);
   }
 
   // --- User Management Routes ---
