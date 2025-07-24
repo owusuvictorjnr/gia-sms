@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, Like, MoreThanOrEqual, In } from "typeorm";
 import { User, UserRole } from "../user/user.entity";
@@ -9,7 +13,8 @@ import {
 } from "../transaction/transaction.entity";
 import { AnnouncementStatus } from "shared-types/src/announcement-status.enum";
 import { Invoice, InvoiceStatus } from "../finance/invoice.entity";
-import { UpdateUserDto } from "./dto/update-user.dto";
+import { PromoteStudentsDto } from "./dto/promote-students.dto";
+import { Class } from "../class/class.entity";
 
 @Injectable()
 export class AdminService {
@@ -21,7 +26,9 @@ export class AdminService {
     @InjectRepository(Transaction)
     private transactionsRepository: Repository<Transaction>,
     @InjectRepository(Invoice)
-    private invoicesRepository: Repository<Invoice>
+    private invoicesRepository: Repository<Invoice>,
+    @InjectRepository(Class)
+    private classesRepository: Repository<Class>
   ) {}
 
   async getDashboardStats() {
@@ -76,10 +83,7 @@ export class AdminService {
   }
 
   // New method to update a user
-  async updateUser(
-    userId: string,
-    updateUserDto: UpdateUserDto
-  ): Promise<User> {
+  async updateUser(userId: string, updateUserDto: any): Promise<User> {
     const user = await this.usersRepository.findOneBy({ id: userId });
     if (!user) {
       throw new NotFoundException(`User with ID "${userId}" not found.`);
@@ -114,6 +118,38 @@ export class AdminService {
       take: 10,
     });
     return users.map(({ password, ...rest }) => rest as User);
+  }
+
+  // New method for end-of-year promotions
+  async promoteStudents(
+    promoteStudentsDto: PromoteStudentsDto
+  ): Promise<{ message: string; count: number }> {
+    const { fromClassId, toClassId } = promoteStudentsDto;
+
+    if (fromClassId === toClassId) {
+      throw new BadRequestException(
+        '"From" class and "To" class cannot be the same.'
+      );
+    }
+
+    const [fromClass, toClass] = await Promise.all([
+      this.classesRepository.findOneBy({ id: fromClassId }),
+      this.classesRepository.findOneBy({ id: toClassId }),
+    ]);
+
+    if (!fromClass || !toClass) {
+      throw new NotFoundException("One or both classes not found.");
+    }
+
+    const result = await this.usersRepository.update(
+      { classId: fromClassId, role: UserRole.STUDENT },
+      { classId: toClassId }
+    );
+
+    return {
+      message: `Successfully promoted ${result.affected} students from ${fromClass.name} to ${toClass.name}.`,
+      count: result.affected || 0,
+    };
   }
 
   async linkParentToChild(parentId: string, childId: string): Promise<User> {
