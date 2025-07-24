@@ -1,25 +1,24 @@
-
 import {
   Controller,
   Post,
   Body,
   Get,
   Patch,
+  Delete,
   Param,
   UseGuards,
   ValidationPipe,
 } from "@nestjs/common";
 import { ClassService } from "./class.service";
 import { CreateClassDto } from "./dto/create-class.dto";
+import { UpdateClassDto } from "./dto/update-class.dto";
 import { AssignUserDto } from "./dto/assign-user.dto";
 import { SetHomeroomTeacherDto } from "./dto/set-homeroom-teacher.dto";
 import { JwtAuthGuard } from "../auth/jwt-auth.guard";
 import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
-import { UserRole } from "../user/user.entity";
+import { User, UserRole } from "../user/user.entity";
 import { GetUser } from "src/auth/get-user.decorator";
-
-
 
 /**
  * ClassController handles class-related operations such as creating classes,
@@ -44,11 +43,31 @@ export class ClassController {
     return this.classService.findAll();
   }
 
+  @Patch(":id") // New endpoint to update a class
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  update(
+    @Param("id") id: string,
+    @Body(new ValidationPipe()) updateClassDto: UpdateClassDto
+  ) {
+    return this.classService.update(id, updateClassDto);
+  }
+
+  @Delete(":id") // New endpoint to delete a class
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  remove(@Param("id") id: string) {
+    return this.classService.remove(id);
+  }
+
   @Post("assign-user")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   assignUser(@Body(new ValidationPipe()) assignUserDto: AssignUserDto) {
-    return this.classService.assignUserToClass(assignUserDto.userId, assignUserDto.classId);
+    return this.classService.assignUserToClass(
+      assignUserDto.userId,
+      assignUserDto.classId
+    );
   }
 
   @Patch(":classId/homeroom-teacher")
@@ -58,7 +77,10 @@ export class ClassController {
     @Param("classId") classId: string,
     @Body(new ValidationPipe()) setHomeroomTeacherDto: SetHomeroomTeacherDto
   ) {
-    return this.classService.setHomeroomTeacher(classId, setHomeroomTeacherDto.teacherId);
+    return this.classService.setHomeroomTeacher(
+      classId,
+      setHomeroomTeacherDto.teacherId
+    );
   }
 
   @Get("my-taught-classes")
@@ -80,12 +102,5 @@ export class ClassController {
   @Roles(UserRole.TEACHER)
   getMyClassRoster(@GetUser() teacherPayload: { userId: string }) {
     return this.classService.findStudentsByTeacher(teacherPayload);
-  }
-
-  @Get("my-homeroom-roster")
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.TEACHER)
-  getMyHomeroomRoster(@GetUser() teacher: { userId: string }) {
-    return this.classService.findStudentsByHomeroomTeacher(teacher.userId);
   }
 }
