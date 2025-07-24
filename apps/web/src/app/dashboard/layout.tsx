@@ -21,6 +21,7 @@ import TimetableManagementPage from "./components/TimetableManagementPage";
 import CalendarPage from "./components/CalendarPage";
 import CalendarManagementPage from "./components/CalendarManagementPage";
 import HealthRecordPage from "./components/HealthRecordPage";
+import PromotionsPage from "./components/PromotionsPage"; // Import the new page
 import { Toaster } from "@/components/ui/toaster";
 
 interface UserProfile {
@@ -28,6 +29,7 @@ interface UserProfile {
   email: string;
   role: string;
   firstName?: string;
+  middleName?: string;
   lastName?: string;
 }
 
@@ -106,7 +108,9 @@ export default function DashboardLayout() {
       case "class-management":
         return <ClassManagementPage />;
       case "timetable":
-        // Pass the profile to the TimetablePage
+        if (profile.role === "admin" || profile.role === "accountant") {
+          return <TimetableManagementPage />;
+        }
         return <TimetablePage profile={profile} />;
       case "calendar":
         if (profile.role === "admin") {
@@ -115,6 +119,8 @@ export default function DashboardLayout() {
         return <CalendarPage />;
       case "health-records":
         return <HealthRecordPage />;
+      case "promotions":
+        return <PromotionsPage />; // Add case for the new page
       default:
         return <p>Page not found.</p>;
     }
@@ -192,6 +198,13 @@ export default function DashboardLayout() {
           )}
           {profile?.role === "admin" && (
             <>
+              <a
+                href="#"
+                onClick={() => setActiveView("promotions")}
+                className={`block px-6 py-3 ${activeView === "promotions" ? "bg-gray-900" : ""}`}
+              >
+                Promotions
+              </a>
               <a
                 href="#"
                 onClick={() => setActiveView("health-records")}
