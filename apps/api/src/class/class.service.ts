@@ -7,6 +7,7 @@ import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Class } from "./class.entity";
 import { CreateClassDto } from "./dto/create-class.dto";
+import { UpdateClassDto } from "./dto/update-class.dto";
 import { User, UserRole } from "../user/user.entity";
 import { TimetableEntry } from "../timetable/timetable.entity";
 
@@ -89,6 +90,38 @@ export class ClassService {
       order: { lastName: "ASC" },
     });
     return students.map(({ password, ...rest }) => rest as User);
+  }
+
+  // New method to update a class
+  async update(
+    classId: string,
+    updateClassDto: UpdateClassDto
+  ): Promise<Class> {
+    const classToUpdate = await this.classesRepository.findOneBy({
+      id: classId,
+    });
+    if (!classToUpdate) {
+      throw new NotFoundException(`Class with ID "${classId}" not found.`);
+    }
+    Object.assign(classToUpdate, updateClassDto);
+    return this.classesRepository.save(classToUpdate);
+  }
+
+  // New method to delete a class
+  async remove(classId: string): Promise<{ message: string }> {
+    // Check if any users are assigned to this class first
+    const userCount = await this.usersRepository.count({ where: { classId } });
+    if (userCount > 0) {
+      throw new BadRequestException(
+        "Cannot delete class. Please re-assign all teachers and students from this class first."
+      );
+    }
+
+    const result = await this.classesRepository.delete(classId);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Class with ID "${classId}" not found.`);
+    }
+    return { message: "Class deleted successfully." };
   }
 
   // New method to find all unique classes a teacher is assigned to via the timetable
