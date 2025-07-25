@@ -545,8 +545,9 @@ export default function ClassManagementPage() {
                         }}
                         className="cursor-pointer p-2 hover:bg-gray-100"
                       >
-                        {user.firstName} {user.middleName} {user.lastName} (
-                        {user.email})
+                        {user.firstName}
+                        {user.middleName}
+                        {user.lastName} ({user.email})
                       </div>
                     ))}
                   </div>
