@@ -20,6 +20,7 @@ import { Roles } from "../auth/decorators/roles.decorator";
 import { User, UserRole } from "../user/user.entity";
 import { GetUser } from "src/auth/get-user.decorator";
 
+
 /**
  * ClassController handles class-related operations such as creating classes,
  * assigning users to classes, setting homeroom teachers, and retrieving class rosters.
@@ -43,7 +44,7 @@ export class ClassController {
     return this.classService.findAll();
   }
 
-  @Patch(":id") // New endpoint to update a class
+  @Patch(":id")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   update(
@@ -53,7 +54,7 @@ export class ClassController {
     return this.classService.update(id, updateClassDto);
   }
 
-  @Delete(":id") // New endpoint to delete a class
+  @Delete(":id")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
   remove(@Param("id") id: string) {
@@ -97,10 +98,10 @@ export class ClassController {
     return this.classService.findClassByTeacher(teacherPayload);
   }
 
-  @Get("my-roster")
+  @Get("my-homeroom-roster")
   @UseGuards(RolesGuard)
   @Roles(UserRole.TEACHER)
-  getMyClassRoster(@GetUser() teacherPayload: { userId: string }) {
-    return this.classService.findStudentsByTeacher(teacherPayload);
+  getMyHomeroomRoster(@GetUser() teacher: { userId: string }) {
+    return this.classService.findStudentsByHomeroomTeacher(teacher.userId);
   }
 }
