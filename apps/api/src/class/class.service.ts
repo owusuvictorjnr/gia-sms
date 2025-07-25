@@ -39,6 +39,47 @@ export class ClassService {
     });
   }
 
+  // FIX: Update the method to handle class not found
+
+  async update(
+    classId: string,
+    updateClassDto: UpdateClassDto
+  ): Promise<Class> {
+    const classToUpdate = await this.classesRepository.findOneBy({
+      id: classId,
+    });
+    if (!classToUpdate) {
+      throw new NotFoundException(`Class with ID "${classId}" not found.`);
+    }
+    Object.assign(classToUpdate, updateClassDto);
+    return this.classesRepository.save(classToUpdate);
+  }
+
+  async remove(classId: string): Promise<{ message: string }> {
+    // FIX: Add a check for timetable entries before deleting
+    const timetableEntryCount = await this.timetableRepository.count({
+      where: { classId },
+    });
+    if (timetableEntryCount > 0) {
+      throw new BadRequestException(
+        "Cannot delete class. Please remove all timetable entries for this class first."
+      );
+    }
+
+    const userCount = await this.usersRepository.count({ where: { classId } });
+    if (userCount > 0) {
+      throw new BadRequestException(
+        "Cannot delete class. Please re-assign all teachers and students from this class first."
+      );
+    }
+
+    const result = await this.classesRepository.delete(classId);
+    if (result.affected === 0) {
+      throw new NotFoundException(`Class with ID "${classId}" not found.`);
+    }
+    return { message: "Class deleted successfully." };
+  }
+
   async assignUserToClass(userId: string, classId: string): Promise<User> {
     const user = await this.usersRepository.findOneBy({ id: userId });
     const classToAssign = await this.classesRepository.findOneBy({
@@ -72,72 +113,22 @@ export class ClassService {
     return this.classesRepository.save(classToUpdate);
   }
 
-  // New method to get the roster for a homeroom teacher
-  async findStudentsByHomeroomTeacher(teacherId: string): Promise<User[]> {
-    const teacherClass = await this.classesRepository.findOne({
+  async findClassesForTeacher(teacherId: string): Promise<Class[]> {
+    const homeroomClasses = await this.classesRepository.find({
       where: { homeroomTeacherId: teacherId },
     });
 
-    if (!teacherClass) {
-      return []; // This teacher is not a homeroom teacher for any class
-    }
-
-    const students = await this.usersRepository.find({
-      where: {
-        classId: teacherClass.id,
-        role: UserRole.STUDENT,
-      },
-      order: { lastName: "ASC" },
-    });
-    return students.map(({ password, ...rest }) => rest as User);
-  }
-
-  // New method to update a class
-  async update(
-    classId: string,
-    updateClassDto: UpdateClassDto
-  ): Promise<Class> {
-    const classToUpdate = await this.classesRepository.findOneBy({
-      id: classId,
-    });
-    if (!classToUpdate) {
-      throw new NotFoundException(`Class with ID "${classId}" not found.`);
-    }
-    Object.assign(classToUpdate, updateClassDto);
-    return this.classesRepository.save(classToUpdate);
-  }
-
-  // New method to delete a class
-  async remove(classId: string): Promise<{ message: string }> {
-    // Check if any users are assigned to this class first
-    const userCount = await this.usersRepository.count({ where: { classId } });
-    if (userCount > 0) {
-      throw new BadRequestException(
-        "Cannot delete class. Please re-assign all teachers and students from this class first."
-      );
-    }
-
-    const result = await this.classesRepository.delete(classId);
-    if (result.affected === 0) {
-      throw new NotFoundException(`Class with ID "${classId}" not found.`);
-    }
-    return { message: "Class deleted successfully." };
-  }
-
-  // New method to find all unique classes a teacher is assigned to via the timetable
-  async findClassesForTeacher(teacherId: string): Promise<Class[]> {
-    const entries = await this.timetableRepository.find({
+    const timetableEntries = await this.timetableRepository.find({
       where: { teacherId },
       relations: ["class"],
     });
 
-    // Get unique classes from the timetable entries
-    const uniqueClasses = entries.reduce((acc, entry) => {
-      if (entry.class && !acc.some((c) => c.id === entry.class.id)) {
-        acc.push(entry.class);
+    const uniqueClasses = [...homeroomClasses];
+    timetableEntries.forEach((entry) => {
+      if (entry.class && !uniqueClasses.some((c) => c.id === entry.class.id)) {
+        uniqueClasses.push(entry.class);
       }
-      return acc;
-    }, [] as Class[]);
+    });
 
     return uniqueClasses;
   }
@@ -154,18 +145,18 @@ export class ClassService {
     return teacher.class;
   }
 
-  async findStudentsByTeacher(teacherPayload: {
-    userId: string;
-  }): Promise<User[]> {
-    const teacher = await this.usersRepository.findOneBy({
-      id: teacherPayload.userId,
+  async findStudentsByHomeroomTeacher(teacherId: string): Promise<User[]> {
+    const teacherClass = await this.classesRepository.findOne({
+      where: { homeroomTeacherId: teacherId },
     });
-    if (!teacher || !teacher.classId) {
+
+    if (!teacherClass) {
       return [];
     }
+
     const students = await this.usersRepository.find({
       where: {
-        classId: teacher.classId,
+        classId: teacherClass.id,
         role: UserRole.STUDENT,
       },
       order: { lastName: "ASC" },
