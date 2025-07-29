@@ -25,6 +25,7 @@ import {
   DialogTitle,
   DialogFooter,
   DialogClose,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import {
   AlertDialog,
@@ -46,19 +47,20 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 
-// Define data shapes
 interface Teacher {
   id: string;
   firstName: string;
   middleName?: string;
   lastName: string;
 }
+
 interface Class {
   id: string;
   name: string;
   academicYear: string;
   homeroomTeacher?: Teacher;
 }
+
 interface UserSearchResult {
   id: string;
   firstName: string;
@@ -67,58 +69,164 @@ interface UserSearchResult {
   email: string;
 }
 
-const getAuthToken = (): string | null => {
-  if (typeof window !== "undefined")
-    return localStorage.getItem("access_token");
-  return null;
-};
+interface ClassUsers {
+  teachers: UserSearchResult[];
+  students: UserSearchResult[];
+}
 
-// --- Edit Class Modal ---
-const EditClassModal = ({
-  cls,
+const ClassDeletionModal = ({
+  classToDelete,
   isOpen,
   setIsOpen,
-  onClassUpdated,
+  onSuccess,
+  allClasses,
 }: {
-  cls: Class | null;
+  classToDelete: Class | null;
   isOpen: boolean;
-  setIsOpen: (isOpen: boolean) => void;
-  onClassUpdated: () => void;
+  setIsOpen: (open: boolean) => void;
+  onSuccess: () => void;
+  allClasses: Class[];
 }) => {
   const { toast } = useToast();
-  const [name, setName] = useState("");
-  const [academicYear, setAcademicYear] = useState("");
+  const [classUsers, setClassUsers] = useState<ClassUsers>({
+    teachers: [],
+    students: [],
+  });
+  const [targetClassId, setTargetClassId] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [step, setStep] = useState<"check" | "resolve" | "delete">("check");
 
   useEffect(() => {
-    if (cls) {
-      setName(cls.name);
-      setAcademicYear(cls.academicYear);
+    if (isOpen && classToDelete) {
+      checkClassDeletion();
     }
-  }, [cls]);
+  }, [isOpen, classToDelete]);
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
-    const token = getAuthToken();
-    if (!cls) return;
+  const checkClassDeletion = async () => {
+    if (!classToDelete) return;
+
+    setIsLoading(true);
     try {
-      const response = await fetch(`http://localhost:3001/classes/${cls.id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ name, academicYear }),
-      });
-      if (!response.ok) throw new Error("Failed to update class.");
-      onClassUpdated();
-      toast({ title: "Success", description: "Class updated successfully." });
-      setIsOpen(false);
-    } catch (err: any) {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(
+        `http://localhost:3001/classes/${classToDelete.id}/users`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (!response.ok) throw new Error("Failed to check class assignments");
+
+      const data = await response.json();
+      setClassUsers(data);
+      setStep(
+        data.teachers.length > 0 || data.students.length > 0
+          ? "resolve"
+          : "delete"
+      );
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: err.message,
+        description: error.message,
         variant: "destructive",
       });
+      setIsOpen(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleUnassignTeachers = async () => {
+    if (!classToDelete) return;
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      await Promise.all(
+        classUsers.teachers.map((teacher) =>
+          fetch(
+            `http://localhost:3001/classes/teachers/${teacher.id}/unassign`,
+            {
+              method: "PATCH",
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          )
+        )
+      );
+
+      toast({
+        title: "Success",
+        description: "Teachers unassigned successfully",
+      });
+      await checkClassDeletion();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMoveStudents = async () => {
+    if (!classToDelete || !targetClassId) return;
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(
+        `http://localhost:3001/classes/${classToDelete.id}/move-students/${targetClassId}`,
+        {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) throw new Error("Failed to move students");
+
+      toast({ title: "Success", description: "Students moved successfully" });
+      await checkClassDeletion();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDeleteClass = async () => {
+    if (!classToDelete) return;
+
+    setIsLoading(true);
+    try {
+      const token = localStorage.getItem("access_token");
+      const response = await fetch(
+        `http://localhost:3001/classes/${classToDelete.id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete class");
+      }
+
+      toast({ title: "Success", description: "Class deleted successfully" });
+      onSuccess();
+      setIsOpen(false);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -126,36 +234,111 @@ const EditClassModal = ({
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Edit Class</DialogTitle>
+          <DialogTitle>Delete {classToDelete?.name}</DialogTitle>
+          <DialogDescription>
+            {step === "check" && "Checking for assigned users..."}
+            {step === "resolve" && "Please resolve assignments before deletion"}
+            {step === "delete" && "Confirm permanent deletion"}
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="edit-name">Class Name</Label>
-            <Input
-              id="edit-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-            />
+
+        {isLoading ? (
+          <div className="py-4 text-center">Loading...</div>
+        ) : step === "resolve" ? (
+          <div className="space-y-6">
+            {classUsers.teachers.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium">
+                  Assigned Teachers ({classUsers.teachers.length})
+                </h4>
+                <ul className="max-h-40 overflow-y-auto rounded border p-2">
+                  {classUsers.teachers.map((teacher) => (
+                    <li key={teacher.id} className="py-1">
+                      {teacher.firstName} {teacher.lastName}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  variant="outline"
+                  onClick={handleUnassignTeachers}
+                  disabled={isLoading}
+                >
+                  Unassign All Teachers
+                </Button>
+              </div>
+            )}
+
+            {classUsers.students.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="font-medium">
+                  Assigned Students ({classUsers.students.length})
+                </h4>
+                <div className="flex gap-2">
+                  <Select
+                    value={targetClassId}
+                    onValueChange={setTargetClassId}
+                    disabled={isLoading}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select target class" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allClasses
+                        .filter((c) => c.id !== classToDelete?.id)
+                        .map((c) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.name} ({c.academicYear})
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    onClick={handleMoveStudents}
+                    disabled={!targetClassId || isLoading}
+                  >
+                    Move Students
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="edit-year">Academic Year</Label>
-            <Input
-              id="edit-year"
-              value={academicYear}
-              onChange={(e) => setAcademicYear(e.target.value)}
-              required
-            />
+        ) : (
+          <div className="space-y-4">
+            <p>Are you sure you want to permanently delete this class?</p>
+            <p className="text-sm text-muted-foreground">
+              This action cannot be undone.
+            </p>
           </div>
-          <DialogFooter>
-            <DialogClose asChild>
-              <Button type="button" variant="outline">
+        )}
+
+        <DialogFooter>
+          {step === "delete" && (
+            <>
+              <Button variant="outline" onClick={() => setIsOpen(false)}>
                 Cancel
               </Button>
-            </DialogClose>
-            <Button type="submit">Save Changes</Button>
-          </DialogFooter>
-        </form>
+              <Button
+                variant="destructive"
+                onClick={handleDeleteClass}
+                disabled={isLoading}
+              >
+                Confirm Deletion
+              </Button>
+            </>
+          )}
+          {step === "resolve" && (
+            <Button
+              onClick={() => {
+                setStep("check");
+                checkClassDeletion();
+              }}
+              disabled={isLoading}
+            >
+              Check Again
+            </Button>
+          )}
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
@@ -168,7 +351,7 @@ export default function ClassManagementPage() {
   const [error, setError] = useState("");
   const { toast } = useToast();
 
-  // State for forms
+  // Form states
   const [className, setClassName] = useState("");
   const [academicYear, setAcademicYear] = useState("");
   const [selectedClassForAssign, setSelectedClassForAssign] =
@@ -182,17 +365,19 @@ export default function ClassManagementPage() {
     null
   );
 
-  // State for modals
+  // Modal states
   const [editingClass, setEditingClass] = useState<Class | null>(null);
   const [deletingClass, setDeletingClass] = useState<Class | null>(null);
+  const [showComplexDelete, setShowComplexDelete] = useState(false);
 
   const fetchClassesAndTeachers = async () => {
-    const token = getAuthToken();
+    const token = localStorage.getItem("access_token");
     if (!token) {
       setError("Authentication error.");
       setIsLoading(false);
       return;
     }
+
     try {
       setIsLoading(true);
       const [classesRes, teachersRes] = await Promise.all([
@@ -203,14 +388,19 @@ export default function ClassManagementPage() {
           headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
+
       if (!classesRes.ok) throw new Error("Failed to fetch classes.");
       if (!teachersRes.ok) throw new Error("Failed to fetch teachers.");
-      const classesData = await classesRes.json();
-      const teachersData = await teachersRes.json();
-      setClasses(classesData);
-      setTeachers(teachersData);
+
+      setClasses(await classesRes.json());
+      setTeachers(await teachersRes.json());
     } catch (err: any) {
       setError(err.message);
+      toast({
+        title: "Error",
+        description: err.message,
+        variant: "destructive",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -222,7 +412,7 @@ export default function ClassManagementPage() {
 
   const handleCreateClass = async (e: FormEvent) => {
     e.preventDefault();
-    const token = getAuthToken();
+    const token = localStorage.getItem("access_token");
     try {
       const response = await fetch("http://localhost:3001/classes", {
         method: "POST",
@@ -232,8 +422,10 @@ export default function ClassManagementPage() {
         },
         body: JSON.stringify({ name: className, academicYear }),
       });
+
       if (!response.ok) throw new Error("Failed to create class.");
-      fetchClassesAndTeachers();
+
+      await fetchClassesAndTeachers();
       toast({ title: "Success", description: "Class created successfully!" });
       setClassName("");
       setAcademicYear("");
@@ -246,9 +438,9 @@ export default function ClassManagementPage() {
     }
   };
 
-  const handleDeleteClass = async () => {
+  const handleSimpleDelete = async () => {
     if (!deletingClass) return;
-    const token = getAuthToken();
+    const token = localStorage.getItem("access_token");
     try {
       const response = await fetch(
         `http://localhost:3001/classes/${deletingClass.id}`,
@@ -257,10 +449,17 @@ export default function ClassManagementPage() {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
-      const data = await response.json();
-      if (!response.ok)
-        throw new Error(data.message || "Failed to delete class.");
-      fetchClassesAndTeachers();
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        if (errorData.message.includes("re-assign")) {
+          setShowComplexDelete(true);
+          return;
+        }
+        throw new Error(errorData.message || "Failed to delete class.");
+      }
+
+      await fetchClassesAndTeachers();
       toast({ title: "Success", description: "Class deleted successfully." });
     } catch (err: any) {
       toast({
@@ -278,21 +477,28 @@ export default function ClassManagementPage() {
       setUserResults([]);
       return;
     }
-    const token = getAuthToken();
+
+    const token = localStorage.getItem("access_token");
     try {
       const [teacherRes, studentRes] = await Promise.all([
         fetch(
           `http://localhost:3001/admin/search-users?role=teacher&query=${query}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         ),
         fetch(
           `http://localhost:3001/admin/search-users?role=student&query=${query}`,
-          { headers: { Authorization: `Bearer ${token}` } }
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
         ),
       ]);
-      const teacherData = await teacherRes.json();
-      const studentData = await studentRes.json();
-      setUserResults([...teacherData, ...studentData]);
+
+      setUserResults([
+        ...(await teacherRes.json()),
+        ...(await studentRes.json()),
+      ]);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -312,7 +518,8 @@ export default function ClassManagementPage() {
       });
       return;
     }
-    const token = getAuthToken();
+
+    const token = localStorage.getItem("access_token");
     try {
       const response = await fetch(
         "http://localhost:3001/classes/assign-user",
@@ -328,7 +535,9 @@ export default function ClassManagementPage() {
           }),
         }
       );
+
       if (!response.ok) throw new Error("Failed to assign user.");
+
       toast({
         title: "Success",
         description: `Assigned ${selectedUser.firstName} to ${selectedClassForAssign.name}!`,
@@ -355,7 +564,8 @@ export default function ClassManagementPage() {
       });
       return;
     }
-    const token = getAuthToken();
+
+    const token = localStorage.getItem("access_token");
     try {
       const response = await fetch(
         `http://localhost:3001/classes/${selectedClassForHomeroom.id}/homeroom-teacher`,
@@ -368,8 +578,10 @@ export default function ClassManagementPage() {
           body: JSON.stringify({ teacherId: selectedTeacherId }),
         }
       );
+
       if (!response.ok) throw new Error("Failed to set homeroom teacher.");
-      fetchClassesAndTeachers();
+
+      await fetchClassesAndTeachers();
       toast({
         title: "Success",
         description: "Homeroom teacher assigned successfully.",
@@ -388,34 +600,101 @@ export default function ClassManagementPage() {
 
   return (
     <div className="space-y-8">
-      <EditClassModal
-        cls={editingClass}
-        isOpen={!!editingClass}
-        setIsOpen={() => setEditingClass(null)}
-        onClassUpdated={fetchClassesAndTeachers}
-      />
+      {/* Edit Class Modal */}
+      <Dialog
+        open={!!editingClass}
+        onOpenChange={(open) => !open && setEditingClass(null)}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Class</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (editingClass) {
+                handleCreateClass(e); // Reusing the create handler for update
+              }
+            }}
+            className="space-y-4"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Class Name</Label>
+              <Input
+                id="edit-name"
+                value={editingClass?.name || ""}
+                onChange={(e) =>
+                  editingClass &&
+                  setEditingClass({
+                    ...editingClass,
+                    name: e.target.value,
+                  })
+                }
+                required
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-year">Academic Year</Label>
+              <Input
+                id="edit-year"
+                value={editingClass?.academicYear || ""}
+                onChange={(e) =>
+                  editingClass &&
+                  setEditingClass({
+                    ...editingClass,
+                    academicYear: e.target.value,
+                  })
+                }
+                required
+              />
+            </div>
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button type="button" variant="outline">
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button type="submit">Save Changes</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Simple Delete Confirmation */}
       <AlertDialog
-        open={!!deletingClass}
-        onOpenChange={() => setDeletingClass(null)}
+        open={!!deletingClass && !showComplexDelete}
+        onOpenChange={(open) => !open && setDeletingClass(null)}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the class '{deletingClass?.name}'.
+              This action cannot be undone.
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogDescription>
-            This will permanently delete the class '{deletingClass?.name}'. This
-            action cannot be undone and will fail if any users are still
-            assigned to this class.
-          </AlertDialogDescription>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteClass}>
+            <AlertDialogAction onClick={handleSimpleDelete}>
               Confirm Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Advanced Delete Modal */}
+      <ClassDeletionModal
+        classToDelete={deletingClass}
+        isOpen={!!deletingClass}
+        setIsOpen={(open) => !open && setDeletingClass(null)}
+        onSuccess={() => {
+          fetchClassesAndTeachers(); // Refresh data after deletion
+          setDeletingClass(null); // Reset deletion state
+        }}
+        allClasses={classes.filter((c) => c.id !== deletingClass?.id)}
+      />
+
+      {/* Create Class Card */}
       <Card>
         <CardHeader>
           <CardTitle>Create New Class</CardTitle>
@@ -442,11 +721,12 @@ export default function ClassManagementPage() {
         </CardContent>
       </Card>
 
+      {/* Class Management Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Manage Existing Classes</CardTitle>
+          <CardTitle>Manage Classes</CardTitle>
           <CardDescription>
-            View, edit, delete, and assign homeroom teachers to classes.
+            View, edit, and delete classes. Assign homeroom teachers.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -480,7 +760,10 @@ export default function ClassManagementPage() {
                     <Button
                       variant="destructive"
                       size="sm"
-                      onClick={() => setDeletingClass(cls)}
+                      onClick={() => {
+                        setDeletingClass(cls);
+                        setShowComplexDelete(false);
+                      }}
                     >
                       Delete
                     </Button>
@@ -492,11 +775,10 @@ export default function ClassManagementPage() {
         </CardContent>
       </Card>
 
+      {/* Assign User to Class */}
       <Card>
         <CardHeader>
-          <CardTitle>
-            Assign User to Class (Students & Subject Teachers)
-          </CardTitle>
+          <CardTitle>Assign User to Class</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleAssignUser} className="space-y-4">
@@ -511,6 +793,7 @@ export default function ClassManagementPage() {
                         ? "default"
                         : "outline"
                     }
+                    type="button"
                     onClick={() => setSelectedClassForAssign(cls)}
                   >
                     {cls.name} ({cls.academicYear})
@@ -534,23 +817,23 @@ export default function ClassManagementPage() {
                     }}
                     placeholder="Search by name or email..."
                   />
-                  <div className="h-32 overflow-y-auto rounded-md border bg-white">
-                    {userResults.map((user) => (
-                      <div
-                        key={user.id}
-                        onClick={() => {
-                          setSelectedUser(user);
-                          setUserResults([]);
-                          setUserQuery(`${user.firstName} ${user.lastName}`);
-                        }}
-                        className="cursor-pointer p-2 hover:bg-gray-100"
-                      >
-                        {user.firstName}
-                        {user.middleName}
-                        {user.lastName} ({user.email})
-                      </div>
-                    ))}
-                  </div>
+                  {userResults.length > 0 && (
+                    <div className="h-32 overflow-y-auto rounded-md border bg-white">
+                      {userResults.map((user) => (
+                        <div
+                          key={user.id}
+                          onClick={() => {
+                            setSelectedUser(user);
+                            setUserResults([]);
+                            setUserQuery(`${user.firstName} ${user.lastName}`);
+                          }}
+                          className="cursor-pointer p-2 hover:bg-gray-100"
+                        >
+                          {user.firstName} {user.lastName} ({user.email})
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <Button type="submit" disabled={!selectedUser}>
                   Assign User
@@ -561,6 +844,7 @@ export default function ClassManagementPage() {
         </CardContent>
       </Card>
 
+      {/* Set Homeroom Teacher */}
       <Card>
         <CardHeader>
           <CardTitle>Set Homeroom Teacher</CardTitle>
