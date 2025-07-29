@@ -8,6 +8,7 @@ import {
   Param,
   UseGuards,
   ValidationPipe,
+  ParseUUIDPipe,
 } from "@nestjs/common";
 import { ClassService } from "./class.service";
 import { CreateClassDto } from "./dto/create-class.dto";
@@ -19,7 +20,7 @@ import { RolesGuard } from "../auth/guards/roles.guard";
 import { Roles } from "../auth/decorators/roles.decorator";
 import { User, UserRole } from "../user/user.entity";
 import { GetUser } from "src/auth/get-user.decorator";
-
+import { ClassAssignmentsDto } from "./dto/class-assignments.dto";
 
 /**
  * ClassController handles class-related operations such as creating classes,
@@ -54,11 +55,20 @@ export class ClassController {
     return this.classService.update(id, updateClassDto);
   }
 
+
+  // Handles class deletion with optional force delete and student reassignment
   @Delete(":id")
   @UseGuards(RolesGuard)
   @Roles(UserRole.ADMIN)
-  remove(@Param("id") id: string) {
-    return this.classService.remove(id);
+  async remove(
+    @Param("id", new ParseUUIDPipe()) id: string,
+    @Body() body: { force?: boolean; moveStudentsTo?: string }
+  ) {
+    return this.classService.removeClass(id, {
+      force: body.force,
+      moveStudentsTo: body.moveStudentsTo,
+      unassignTeachers: true, // Always unassign teachers in force delete
+    });
   }
 
   @Post("assign-user")
@@ -103,5 +113,41 @@ export class ClassController {
   @Roles(UserRole.TEACHER)
   getMyHomeroomRoster(@GetUser() teacher: { userId: string }) {
     return this.classService.findStudentsByHomeroomTeacher(teacher.userId);
+  }
+
+  // Add these to ClassController
+
+  @Get(":id/users")
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  getClassUsers(@Param("id") id: string) {
+    return this.classService.getClassUsers(id);
+  }
+
+  @Patch("teachers/:teacherId/unassign")
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  unassignTeacher(@Param("teacherId") teacherId: string) {
+    return this.classService.unassignTeacher(teacherId);
+  }
+
+  @Post(":id/move-students/:targetClassId")
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  moveStudents(
+    @Param("id") id: string,
+    @Param("targetClassId") targetClassId: string
+  ) {
+    return this.classService.moveStudents(id, targetClassId);
+  }
+
+  // src/class/class.controller.ts
+  @Get(":id/assignments")
+  @UseGuards(RolesGuard)
+  @Roles(UserRole.ADMIN)
+  async getClassAssignments(
+    @Param("id", new ParseUUIDPipe()) id: string
+  ): Promise<ClassAssignmentsDto> {
+    return this.classService.getClassAssignments(id);
   }
 }
